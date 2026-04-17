@@ -1,4 +1,3 @@
-
 //Program Counter到Control Unit的寄存器
 module dff_1 (
     input  logic clk,
@@ -11,19 +10,23 @@ module dff_1 (
     output logic [31:0] out_pc,
 
     input  logic [31:0] in_instr,
-    output logic [31:0] out_instr
+    output logic [31:0] out_instr,
 
+    input  logic in_valid,
+    output logic out_valid
 );
     always @(posedge clk) begin
         if (rst) begin
             out_pc_add4 <= 0;
             out_instr <= 0;
             out_pc <= 0;
+            out_valid <= 0;
         end
         else begin
             out_pc_add4 <= in_pc_add4;
             out_instr <= in_instr;
             out_pc <= in_pc;
+            out_valid <= in_valid;
         end
     end
 endmodule
@@ -78,8 +81,10 @@ module dff_2(
     output logic [31:0] out_ALU_A,
 
     input  logic [31:0] in_ALU_B,
-    output logic [31:0] out_ALU_B
+    output logic [31:0] out_ALU_B,
 
+    input  logic in_valid,
+    output logic out_valid
 );
     always @(posedge clk) begin
         if (rst) begin
@@ -98,6 +103,7 @@ module dff_2(
             out_instr <= 0;
             out_ALU_A <= 0;
             out_ALU_B <= 0;
+            out_valid <= 0;
         end
         else begin
             out_NpcOp <= in_NpcOp;
@@ -115,6 +121,7 @@ module dff_2(
             out_instr <= in_instr;
             out_ALU_A <= in_ALU_A;
             out_ALU_B <= in_ALU_B;
+            out_valid <= in_valid;
         end
     end
 endmodule
@@ -152,7 +159,10 @@ module dff_3(
     output logic [31:0] out_ALU_B,
 
     input  logic [31:0] in_imm,         // 立即数
-    output logic [31:0] out_imm
+    output logic [31:0] out_imm,
+
+    input  logic in_valid,
+    output logic out_valid
 
     //input  logic [31:0] in_csr_wb,      // CSR 写回数据
     //output logic [31:0] out_csr_wb
@@ -170,6 +180,7 @@ module dff_3(
             out_imm       <= 0;
             //out_csr_wb    <= 0;
             out_ALU_B     <= 0;
+            out_valid     <= 0;
         end
         else begin
             out_pc_add4   <= in_pc_add4;
@@ -182,6 +193,7 @@ module dff_3(
             out_imm       <= in_imm;
             //out_csr_wb    <= in_csr_wb;
             out_ALU_B     <= in_ALU_B;
+            out_valid     <= in_valid;
         end
     end
 endmodule
@@ -221,8 +233,10 @@ module dff_4(
     output logic [31:0] out_instr,
 
     input  logic [31:0] in_mdata,
-    output logic [31:0] out_mdata
+    output logic [31:0] out_mdata,
 
+    input  logic in_valid,
+    output logic out_valid
 );
     always @(posedge clk) begin
         if (rst) begin
@@ -235,6 +249,7 @@ module dff_4(
             out_instr    <= 0;
             out_funct    <= 0;
             out_mdata    <= 0;
+            out_valid    <= 0;
         end
         else begin
             out_MemToReg <= in_MemToReg;
@@ -246,6 +261,7 @@ module dff_4(
             out_instr    <= in_instr;
             out_funct    <= in_funct;
             out_mdata    <= in_mdata;
+            out_valid    <= in_valid;
         end
     end
 endmodule

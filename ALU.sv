@@ -27,6 +27,7 @@ module ALU#(
 )(
     input  logic                    clk         ,  // 时钟信号
     input  logic                    rst         ,  // 复位信号
+    input  logic                    valid       ,  // 流水线有效信号（新增）
     input  logic [DATAWIDTH - 1:0]  A           ,  // 操作数A
     input  logic [DATAWIDTH - 1:0]  B           ,  // 操作数B
     input  logic [13:0]             ALUControl  ,  // ALU控制信号（14位独热码）
@@ -37,15 +38,7 @@ module ALU#(
     // ALU操作使能信号，从ALUControl中解码
     logic op_add, op_sub, op_and, op_or, op_xor, op_sll, op_srl;
     logic op_sra, op_beq, op_bne, op_blt, op_bge, op_bgeu, op_bltu;
-    logic rst_delay,rst_delay1;                            
 
-    
-    always_ff @(posedge clk) begin
-        rst_delay <= rst;
-    end
-    always_ff @(posedge clk) begin
-        rst_delay1 <= rst_delay;
-    end
     // 将14位ALUControl信号分解为独立的操作使能信号
     assign op_add = ALUControl[0];
     assign op_sub = ALUControl[1];
@@ -100,8 +93,8 @@ module ALU#(
     assign bgeu_result = {31'b0, carry};                                   // 无符号大于等于（检查进位）
     assign bltu_result = {31'b0, ~carry};                                  // 无符号小于（进位取反）
 
-    // isTrue输出：用于分支指令，在rst=0且rst_delay=1时强制为0，否则取Result的最低位
-    assign isTrue = (rst == 1'b0 && rst_delay == 1'b1) ? 1'b0 : Result[0];
+    // isTrue输出：用于分支指令，仅在valid有效且非复位时输出Result[0]
+    assign isTrue = ((rst == 1'b0) || (valid == 1'b0)) ? 1'b0 : Result[0];
 
     // 最终结果选择：使用独热码多路选择器
     // 根据ALUControl信号选择对应的运算结果

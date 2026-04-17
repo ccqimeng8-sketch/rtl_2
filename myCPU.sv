@@ -95,6 +95,9 @@ module myCPU (
 	//logic [DATAWIDTH-1:0]	csr_wb_temp,	csr_wb_temp1;
 	logic [DATAWIDTH-1:0]	mdata_temp; 
 	
+	// valid 信号声明
+	logic valid_temp, valid_temp1, valid_temp2, valid_temp3;
+
 	// 前推信号声明
 	logic [DATAWIDTH-1:0]	ALU_A_fwd, ALU_B_fwd;
 	logic [DATAWIDTH-1:0]	ALU_B_fwd_temp;
@@ -126,10 +129,10 @@ module myCPU (
 	);
 
 	// 偏移量选择：根据OffsetOrigin选择offset的来源
-	// 00: 立即数，01: ALU结果，10: CSR计算的NPC
-	assign offset = {32{OffsetOrigin == 2'b0}} & imm_temp |
-					{32{OffsetOrigin == 2'b01}} & daddr;
-					//{32{OffsetOrigin == 2'b10}} & csr_npc;
+    // 00: 立即数，01: ALU结果，10: CSR计算的NPC
+    assign offset = ({32{OffsetOrigin == 2'b0}} & imm_temp & {32{valid_temp}}) |
+                    ({32{OffsetOrigin == 2'b01}} & daddr & {32{valid_temp}});
+                    //{32{OffsetOrigin == 2'b10}} & csr_npc;
     
 	// IF/ID 流水线寄存器 (dff_1)
 	dff_1 dff1_inst(
@@ -140,7 +143,9 @@ module myCPU (
 		.in_pc        (pc),
 		.out_pc       (pc_temp),  
 		.in_instr     (instr),
-		.out_instr    (instr_temp)       
+		.out_instr    (instr_temp),
+		.in_valid     (~rst), // 初始 valid = not reset
+		.out_valid    (valid_temp)       
 	);
 
 	// 指令字段提取
@@ -170,7 +175,7 @@ module myCPU (
 	RF #(ADDR_WIDTH, DATAWIDTH) rf_inst (
 		.clk        (clk),          // Input: 时钟信号
 		.rst        (rst),          // Input: 复位信号
-		.wen      	(RegWrite_temp3),     // Input: 写使能
+		.wen      	(RegWrite_temp3),     // Input: 写使能（增加valid判断）
 		.waddr    	(instr_temp3[11:7]),  // Input: 写地址（rd）
 		.wdata      (wdata),         // Input: 写数据
 		.rR1   		(instr_temp[19:15]), // Input: 读地址1（rs1）
@@ -211,7 +216,9 @@ module myCPU (
 		.in_ALU_A      (ALU_A),       
 		.out_ALU_A     (ALU_A_temp),      
 		.in_ALU_B      (ALU_B),      
-		.out_ALU_B     (ALU_B_temp)   
+		.out_ALU_B     (ALU_B_temp),
+		.in_valid      (valid_temp),
+		.out_valid     (valid_temp1)
 	);
 	
 	// ==================== 数据前推逻辑 (Forwarding Unit) ====================
@@ -254,6 +261,7 @@ module myCPU (
     ALU #(DATAWIDTH) alu_inst (
 		.clk         (clk),         // Input: 时钟信号
 		.rst         (rst),         // Input: 复位信号
+		.valid       (valid_temp1), // Input: 流水线有效信号（新增连接）
 		.A           (A),           // Input: 操作数A
 		.B           (B),           // Input: 操作数B
 		.ALUControl  (ALUControl),  // Input: ALU控制信号
@@ -308,7 +316,9 @@ module myCPU (
 		.in_MemWrite    (MemWrite_temp),
 		.out_MemWrite   (MemWrite_temp1),
 		.in_ALU_B   	(ALU_B_fwd),
-		.out_ALU_B   	(ALU_B_fwd_temp)
+		.out_ALU_B   	(ALU_B_fwd_temp),
+		.in_valid       (valid_temp1),
+		.out_valid      (valid_temp2)
 		//.in_csr_wb      (csr_wb),
 		//.out_csr_wb     (csr_wb_temp),
 	);
@@ -322,7 +332,7 @@ module myCPU (
 
 	//MEM_Access stage
 	assign perip_addr = daddr_temp;
-    assign perip_wen  = MemWrite_temp1;
+    assign perip_wen  = MemWrite_temp1 & valid_temp2;  // 增加valid判断（注意：MemWrite_temp1来自dff_3，对应valid_temp2）
     assign perip_mask = funct_temp1[1:0];  
     assign perip_wdata = ALU_B_fwd_temp;
 
@@ -344,7 +354,9 @@ module myCPU (
 		.in_RegWrite    (RegWrite_temp1),
 		.out_RegWrite   (RegWrite_temp2),
 		.in_mdata       (mdata),          
-		.out_mdata      (mdata_temp)
+		.out_mdata      (mdata_temp),
+		.in_valid       (valid_temp2),
+		.out_valid      (valid_temp3)
 		//.in_csr_wb      (csr_wb_temp),
 		//.out_csr_wb     (csr_wb_temp1)    
 	);
@@ -364,4 +376,3 @@ module myCPU (
 	    })
     );
 endmodule
-
