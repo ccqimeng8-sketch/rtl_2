@@ -25,8 +25,6 @@
 module ALU#(
     parameter   DATAWIDTH = 32	  // 数据宽度，默认为32位
 )(
-    input  logic                    clk         ,  // 时钟信号
-    input  logic                    rst         ,  // 复位信号
     input  logic                    valid       ,  // 流水线有效信号（新增）
     input  logic [DATAWIDTH - 1:0]  A           ,  // 操作数A
     input  logic [DATAWIDTH - 1:0]  B           ,  // 操作数B
@@ -94,7 +92,7 @@ module ALU#(
     assign bltu_result = {31'b0, ~carry};                                  // 无符号小于（进位取反）
 
     // isTrue输出：用于分支指令，仅在valid有效且非复位时输出Result[0]
-    assign isTrue = ((rst == 1'b0) || (valid == 1'b0)) ? 1'b0 : Result[0];
+    assign isTrue =  (valid == 1'b0) ? 1'b0 : Result[0];
 
     // 最终结果选择：使用独热码多路选择器
     // 根据ALUControl信号选择对应的运算结果

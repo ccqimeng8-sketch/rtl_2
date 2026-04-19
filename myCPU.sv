@@ -54,14 +54,13 @@ module myCPU (
     logic [6:0]				opcode	        ;
     logic [3:0]				funct	        ;
     logic [DATAWIDTH-1:0]	A		        ;
-    logic [DATAWIDTH-1:0]	data_in		    ;
     logic [DATAWIDTH-1:0]	B		        ;
     //logic [11:0]			csr_idx	        ;
     //logic [3:0]			CSRControll     ;    
     logic  					ALUSrcA, ALUSrcB;
 	logic [DATAWIDTH-1:0]	ALU_A, ALU_B	;
     logic [13:0] ALUControl;
-    logic [DATAWIDTH-1:0]	mdata, csr_wb	;
+    logic [DATAWIDTH-1:0]	mdata 			;
 
 	logic [DATAWIDTH-1:0] 	npc		        ;
 	logic [DATAWIDTH-1:0] 	instr	        ;
@@ -71,26 +70,22 @@ module myCPU (
 
 	logic [31:0]  			Result			;
     logic         			MemWrite		;
-	logic [ 1:0]  			mask			;
     logic [31:0]  			rR2_data		;
     logic [31:0]  			data_out		;
 
-	logic [DATAWIDTH-1:0]	pc, instruction	;
+	logic [DATAWIDTH-1:0]	pc				;
 
 	// 流水线寄存器临时信号声明
 	logic [DATAWIDTH-1:0]	pcadd4_temp, 	pcadd4_temp1, 	pcadd4_temp2, 	pcadd4_temp3, pcadd4_temp4;
 	logic [DATAWIDTH-1:0]	pc_temp, 		pc_temp1, 		pc_temp2;
-	logic [DATAWIDTH-1:0]	instr_temp, 	instr_temp1, 	instr_temp2, instr_temp3, instr_temp4;
+	logic [DATAWIDTH-1:0]	instr_temp, 	instr_temp1, 	instr_temp2, instr_temp3;
 	logic [6:0]				opcode_temp, 	opcode_temp1;
-	logic [3:0]				funct_temp, 	funct_temp1, 	funct_temp2, funct_temp3;
-	logic [1:0]				NpcOp_temp;
-	logic 					RegWrite_temp, 	RegWrite_temp1, RegWrite_temp2, RegWrite_temp3;
-	logic [2:0]				MemToReg_temp, 	MemToReg_temp1, MemToReg_temp2, MemToReg_temp3;
+	logic [3:0]				funct_temp, 	funct_temp1;
+	logic 					RegWrite_temp, 	RegWrite_temp1, RegWrite_temp2;
+	logic [2:0]				MemToReg_temp, 	MemToReg_temp1, MemToReg_temp2;
 	logic 					MemWrite_temp;
-	logic [1:0]				OffsetOrigin_temp;
 	logic 					ALUSrcA_temp, 	ALUSrcB_temp;
-	logic [DATAWIDTH-1:0]	imm_temp, 		imm_temp1, 		imm_temp2, imm_temp3;
-	logic [DATAWIDTH-1:0]	A_temp, 		B_temp;
+	logic [DATAWIDTH-1:0]	imm_temp, 		imm_temp1, 		imm_temp2;
 	logic [DATAWIDTH-1:0]	daddr_temp, daddr_temp1;
 	//logic [DATAWIDTH-1:0]	csr_wb_temp,	csr_wb_temp1;
 	logic [DATAWIDTH-1:0]	mdata_temp; 
@@ -221,21 +216,14 @@ module myCPU (
 		.out_imm    	(imm_temp),             // Output: 传递给下一级的 imm
 		.in_instr     	(instr_temp),	// Input: 输入的指令
 		.out_instr    	(instr_temp1),             // Output: 输出的指令
-		.in_ALU_A      (ALU_A),       
-		.out_ALU_A     (ALU_A_temp),      
-		.in_ALU_B      (ALU_B),      
-		.out_ALU_B     (ALU_B_temp),
-		.in_valid      (valid_temp),
-		.out_valid     (valid_temp1)
+		.in_valid       (valid_temp),
+		.out_valid      (valid_temp1)
 	);
 	
 	// ==================== 数据前推逻辑 (Forwarding Unit) ====================
 	
 	// 实例化 Forwarding Unit
 	FU fu_inst (
-		.clk            (clk),
-		.rst            (rst),
-
 		// ID/EX 阶段信号
 		.rs1_ex         (instr_temp1[19:15]),
 		.rs2_ex         (instr_temp1[24:20]),
@@ -270,8 +258,6 @@ module myCPU (
 
     // ALU模块：算术逻辑单元
     ALU #(DATAWIDTH) alu_inst (
-		.clk         (clk),         // Input: 时钟信号
-		.rst         (rst),         // Input: 复位信号
 		.valid       (valid_temp1), // Input: 流水线有效信号（新增连接）
 		.A           (A),           // Input: 操作数A
 		.B           (B),           // Input: 操作数B
@@ -352,8 +338,6 @@ module myCPU (
 		.rst            (rst),
 		.in_instr       (instr_temp2),
 		.out_instr      (instr_temp3),
-		.in_funct       (funct_temp1),
-		.out_funct      (funct_temp2),
 		.in_MemToReg    (MemToReg_temp1),
 		.out_MemToReg   (MemToReg_temp2),
 		.in_pc_add4     (pcadd4_temp2),

@@ -2,9 +2,6 @@
 `include "defines.sv"
 
 module FU (
-    input  logic        clk,
-    input  logic        rst,
-
     // ID/EX 阶段信号 (当前指令)
     input  logic [4:0]  rs1_ex,         // 当前指令的 rs1
     input  logic [4:0]  rs2_ex,         // 当前指令的 rs2
