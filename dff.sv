@@ -78,7 +78,13 @@ module dff_2(
     output logic [31:0] out_instr,
 
     input  logic in_valid,
-    output logic out_valid
+    output logic out_valid,
+    
+    input logic [31:0] in_ALU_A,
+    output logic [31:0] out_ALU_A,
+
+    input logic [31:0] in_ALU_B,
+    output logic [31:0] out_ALU_B
 );
     always @(posedge clk) begin
         if (rst) begin
@@ -96,6 +102,8 @@ module dff_2(
             out_pc_add4 <= 0;
             out_instr <= 0;
             out_valid <= 0;
+            out_ALU_A <= 0;
+            out_ALU_B <= 0;
         end
         else begin
             out_NpcOp <= in_NpcOp;
@@ -112,6 +120,8 @@ module dff_2(
             out_pc_add4 <= in_pc_add4;
             out_instr <= in_instr;
             out_valid <= in_valid;
+            out_ALU_A <= in_ALU_A;
+            out_ALU_B <= in_ALU_B;
         end
     end
 endmodule
@@ -152,10 +162,13 @@ module dff_3(
     output logic [31:0] out_imm,
 
     input  logic in_valid,
-    output logic out_valid
+    output logic out_valid,
 
-    //input  logic [31:0] in_csr_wb,      // CSR 写回数据
-    //output logic [31:0] out_csr_wb
+    input  logic in_isTrue,
+    output logic out_isTrue,
+
+    input  logic [1:0] in_OffsetOrigin,
+    output logic [1:0] out_OffsetOrigin
 );
  
     always @(posedge clk) begin
@@ -168,9 +181,10 @@ module dff_3(
             out_MemWrite  <= 0;
             out_daddr     <= 0;
             out_imm       <= 0;
-            //out_csr_wb    <= 0;
             out_ALU_B     <= 0;
             out_valid     <= 0;
+            out_isTrue   <= 0;
+            out_OffsetOrigin <= 0;
         end
         else begin
             out_pc_add4   <= in_pc_add4;
@@ -181,9 +195,10 @@ module dff_3(
             out_MemWrite  <= in_MemWrite;
             out_daddr     <= in_daddr;
             out_imm       <= in_imm;
-            //out_csr_wb    <= in_csr_wb;
             out_ALU_B     <= in_ALU_B;
             out_valid     <= in_valid;
+            out_isTrue    <= in_isTrue;
+            out_OffsetOrigin <= in_OffsetOrigin;
         end
     end
 endmodule

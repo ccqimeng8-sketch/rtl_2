@@ -42,30 +42,27 @@ module myCPU (
   	parameter   RESET_VAL  = 32'h8000_0000  ;
 	parameter   ADDR_WIDTH = 5				;
 
-	logic 					clk, rst		;
+	logic 					clk, 			rst											;
     logic [DATAWIDTH-1:0] 	offset          ;
-    logic [1:0]				NpcOp	        ;
+    logic [1:0]				NpcOp,			NpcOp_temp									;
     logic [2:0]				MemToReg        ;
-    logic 					RegWrite        ;
-	logic [1:0]  			OffsetOrigin    ;
+    logic 					RegWrite,		RegWrite_temp3								;        
+	logic [1:0]  			OffsetOrigin,	OffsetOrigin_temp,		OffsetOrigin_temp1	;
 	logic [DATAWIDTH-1:0]	imm		        ;
-	//logic [DATAWIDTH-1:0]	csr_npc	        ;
 	logic 					isTrue	        ;
     logic [6:0]				opcode	        ;
     logic [3:0]				funct	        ;
     logic [DATAWIDTH-1:0]	A		        ;
     logic [DATAWIDTH-1:0]	B		        ;
-    //logic [11:0]			csr_idx	        ;
-    //logic [3:0]			CSRControll     ;    
-    logic  					ALUSrcA, ALUSrcB;
-	logic [DATAWIDTH-1:0]	ALU_A, ALU_B	;
+    logic  					ALUSrcA, 		ALUSrcB										;
+	logic [DATAWIDTH-1:0]	ALU_A, 			ALU_B										;
     logic [13:0] ALUControl;
     logic [DATAWIDTH-1:0]	mdata 			;
 
 	logic [DATAWIDTH-1:0] 	npc		        ;
 	logic [DATAWIDTH-1:0] 	instr	        ;
 	logic [DATAWIDTH-1:0] 	pcadd4          ;
-    logic [DATAWIDTH-1:0]	wdata           ;
+    logic [DATAWIDTH-1:0]	wdata,			wdata_temp;           
     logic [DATAWIDTH-1:0]	daddr           ;
 
 	logic [31:0]  			Result			;
@@ -76,9 +73,9 @@ module myCPU (
 	logic [DATAWIDTH-1:0]	pc				;
 
 	// 流水线寄存器临时信号声明
-	logic [DATAWIDTH-1:0]	pcadd4_temp, 	pcadd4_temp1, 	pcadd4_temp2, 	pcadd4_temp3, pcadd4_temp4;
+	logic [DATAWIDTH-1:0]	pcadd4_temp, 	pcadd4_temp1, 	pcadd4_temp2, 	pcadd4_temp3, 	pcadd4_temp4;
 	logic [DATAWIDTH-1:0]	pc_temp, 		pc_temp1, 		pc_temp2;
-	logic [DATAWIDTH-1:0]	instr_temp, 	instr_temp1, 	instr_temp2, instr_temp3;
+	logic [DATAWIDTH-1:0]	instr_temp, 	instr_temp1, 	instr_temp2, 	instr_temp3,	instr_temp4;
 	logic [6:0]				opcode_temp, 	opcode_temp1;
 	logic [3:0]				funct_temp, 	funct_temp1;
 	logic 					RegWrite_temp, 	RegWrite_temp1, RegWrite_temp2;
@@ -86,12 +83,11 @@ module myCPU (
 	logic 					MemWrite_temp;
 	logic 					ALUSrcA_temp, 	ALUSrcB_temp;
 	logic [DATAWIDTH-1:0]	imm_temp, 		imm_temp1, 		imm_temp2;
-	logic [DATAWIDTH-1:0]	daddr_temp, daddr_temp1;
-	//logic [DATAWIDTH-1:0]	csr_wb_temp,	csr_wb_temp1;
+	logic [DATAWIDTH-1:0]	daddr_temp, 	daddr_temp1;
 	logic [DATAWIDTH-1:0]	mdata_temp; 
 	
-	// valid 信号声明
-	logic valid_temp, valid_temp1, valid_temp2, valid_temp3;
+	// 检查有效信号声明
+	logic   				valid_temp, 	valid_temp1, 	valid_temp2, 	valid_temp3	;
 
 	// 前推信号声明
 	logic [DATAWIDTH-1:0]	ALU_A_fwd, ALU_B_fwd;
@@ -115,8 +111,8 @@ module myCPU (
 
 	// NPC模块：下一程序计数器计算
 	NPC #(DATAWIDTH) npc_inst (
-		.isTrue   (isTrue)	, // Input: 分支条件判断结果
-		.npc_op   (NpcOp)	, // Input: NPC操作选择
+		.isTrue   (isTrue_temp)	, // Input: 分支条件判断结果
+		.npc_op   (NpcOp_temp)	, // Input: NPC操作选择
 		.pc       (pc)		, // Input: 当前PC值
 		.offset   (offset)	, // Input: 偏移量
 		.npc      (npc)		, // Output: 下一条指令地址
@@ -129,9 +125,9 @@ module myCPU (
     if (!valid_temp)
         offset = 32'b0;
     else begin
-        case (OffsetOrigin)
-            2'b00: offset = imm_temp;
-            2'b01: offset = daddr;
+        case (OffsetOrigin_temp1)
+            2'b00: offset = imm_temp1;
+            2'b01: offset = daddr_temp;
             default: offset = 32'b0;
         endcase
     	end
@@ -173,19 +169,6 @@ module myCPU (
 		.instr   (instr_temp), // Input: 指令字
 		.imm     (imm)    // Output: 生成的立即数
 	);
-	
-		// RF模块：寄存器文件
-	RF #(ADDR_WIDTH, DATAWIDTH) rf_inst (
-		.clk        (clk),          // Input: 时钟信号
-		.rst        (rst),          // Input: 复位信号
-		.wen      	(RegWrite_temp2 & valid_temp3),     // Input: 写使能（增加valid判断）
-		.waddr    	(instr_temp3[11:7]),  // Input: 写地址（rd）
-		.wdata      (wdata),         // Input: 写数据
-		.rR1   		(instr_temp1[19:15]), // Input: 读地址1（rs1）
-		.rR2   		(instr_temp1[24:20]), // Input: 读地址2（rs2）
-		.rR1_data  	(ALU_A),        // Output: 读数据1
-		.rR2_data	(ALU_B)         // Output: 读数据2
-	);
 
 	dff_2 dff_2_inst (
 		.clk      		(clk),         // Input: 时钟
@@ -220,6 +203,18 @@ module myCPU (
 		.out_valid      (valid_temp1)
 	);
 	
+			// RF模块：寄存器文件
+	RF #(ADDR_WIDTH, DATAWIDTH) rf_inst (
+		.clk        (clk),          // Input: 时钟信号
+		.rst        (rst),          // Input: 复位信号
+		.wen      	(RegWrite_temp3),     // Input: 写使能（增加valid判断）
+		.waddr    	(instr_temp4[11:7]),  // Input: 写地址（rd）
+		.wdata      (wdata_temp),         // Input: 写数据
+		.rR1   		(instr_temp1[19:15]), // Input: 读地址1（rs1）
+		.rR2   		(instr_temp1[24:20]), // Input: 读地址2（rs2）
+		.rR1_data  	(ALU_A),        // Output: 读数据1
+		.rR2_data	(ALU_B)         // Output: 读数据2
+	);
 	// ==================== 数据前推逻辑 (Forwarding Unit) ====================
 	
 	// 实例化 Forwarding Unit
@@ -272,27 +267,7 @@ module myCPU (
 		.funct        (funct_temp),      // Input: 指令功能码
 		.ALUControl   (ALUControl)  // Output: ALU控制信号
 	);
-/*
-	// CSR模块：控制和状态寄存器
-	CSR #(DATAWIDTH) csr_inst (
-		.clk			(clk),          // Input: 时钟信号
-		.rst			(rst),          // Input: 复位信号
-		.pc				(pc_temp2),           // Input: 当前PC值
-		.rf1			(A_temp),            // Input: ALU操作数1的值
-		.csr_idx		(csr_idx),      // Input: CSR寄存器索引
-		.CSRControll	(CSRControll),  // Input: CSR控制信号
-		.csr_npc		(csr_npc),      // Output: CSR计算的下一个PC地址
-		.csr_wb			(csr_wb)        // Output: CSR写回数据
-	);
-	
-	// CCTL模块：CSR控制单元
-	CCTL cctl_inst (
-		.instr		 	(instr_temp2),      // Input: 指令字
-		.csr_idx		(csr_idx),    // Output: CSR寄存器索引
-		.CSRControll  	(CSRControll) // Output: CSR控制信号
-	);
-	*/
-	//dff_mem
+
 	dff_3 dff_3_inst (
 		.clk            (clk),
 		.rst            (rst),
@@ -315,9 +290,11 @@ module myCPU (
 		.in_ALU_B   	(ALU_B_fwd),
 		.out_ALU_B   	(ALU_B_fwd_temp),
 		.in_valid       (valid_temp1),
-		.out_valid      (valid_temp2)
-		//.in_csr_wb      (csr_wb),
-		//.out_csr_wb     (csr_wb_temp),
+		.out_valid      (valid_temp2),
+		.in_isTrue      (isTrue),
+		.out_isTrue     (isTrue_temp),
+		.in_OffsetOrigin(OffsetOrigin_temp),// Input: 偏移量来源选择
+		.out_OffsetOrigin(OffsetOrigin_temp1)           // Output: 传递给下一级的 OffsetOrigin
 	);
 
 	// Mask模块：数据掩码处理
@@ -370,4 +347,17 @@ module myCPU (
 		    `MEM_TO_REG_CSR   , 32'b0
 	    })
     );
+
+	always_ff @(posedge clk) begin 
+		if (rst) begin
+			wdata_temp <= 0;
+			RegWrite_temp3 <= 0;
+			instr_temp4 <= 0;
+		end
+		else begin
+			wdata_temp <= wdata;
+			RegWrite_temp3 <= RegWrite_temp2;
+			instr_temp4 <= instr_temp3;
+		end
+	end
 endmodule
