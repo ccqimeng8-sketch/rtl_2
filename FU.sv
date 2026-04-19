@@ -39,12 +39,12 @@ module FU (
     // --- 前推控制信号生成 ---
     
     // 前推 A (rs1)
-    assign fwd_a_ex  = valid_mem && (rs1_ex != 0) && (rs1_ex == rd_ex)  && reg_write_ex;
-    assign fwd_a_mem = valid_wb  && (rs1_ex != 0) && (rs1_ex == rd_mem) && reg_write_mem;
+    assign fwd_a_ex  = valid_mem && (rs1_ex != 0) && (rd_ex != 0) && (rs1_ex == rd_ex)  && reg_write_ex;
+    assign fwd_a_mem = valid_wb  && (rs1_ex != 0) && (rd_mem != 0) && (rs1_ex == rd_mem) && reg_write_mem;
 
     // 前推 B (rs2)
-    assign fwd_b_ex  = valid_mem && (rs2_ex != 0) && (rs2_ex == rd_ex)  && reg_write_ex;
-    assign fwd_b_mem = valid_wb  && (rs2_ex != 0) && (rs2_ex == rd_mem) && reg_write_mem;
+    assign fwd_b_ex  = valid_mem && (rs2_ex != 0) && (rd_ex != 0) && (rs2_ex == rd_ex)  && reg_write_ex;
+    assign fwd_b_mem = valid_wb  && (rs2_ex != 0) && (rd_mem != 0) && (rs2_ex == rd_mem) && reg_write_mem;
 
     // --- 前推数据选择 ---
     always_comb begin
@@ -60,7 +60,8 @@ module FU (
                 if (mem_to_reg_ex != `MEM_TO_REG_MEM) begin 
                     fwd_data_a = alu_result_ex;
                 end
-            end else if (fwd_a_mem) begin
+            end 
+            else if (fwd_a_mem) begin
                 // 从 MEM 阶段前推
                 if (mem_to_reg_mem == `MEM_TO_REG_MEM) begin
                     fwd_data_a = mem_data_mem;

@@ -41,7 +41,7 @@ module RF #(
     output logic [DATAWIDTH - 1:0]  rR1_data  ,      // 读数据1（rs1的值）
     output logic [DATAWIDTH - 1:0]  rR2_data         // 读数据2（rs2的值）
 );
-    logic [DATAWIDTH - 1:0] reg_bank [31:0];  // 32个通用寄存器组成的寄存器堆
+    logic [DATAWIDTH - 1:0] reg_bank [31:0] = '{default:0};  // 初始化所有寄存器为0
 
     // 寄存器写操作：同步时序逻辑
     // 复位时将所有寄存器清零
@@ -59,14 +59,10 @@ module RF #(
         end
     end
 
-    // 读端口1：组合逻辑读取rs1寄存器的值
-    always_comb begin
-        rR1_data = reg_bank[rR1];
-    end
+    //
 
-    // 读端口2：组合逻辑读取rs2寄存器的值
-    always_comb begin
-        rR2_data = reg_bank[rR2];
-    end
+    // 修改为纯组合逻辑读，x0硬连线为0
+    assign rR1_data = (rR1 == 5'd0) ? 32'b0 : reg_bank[rR1];
+    assign rR2_data = (rR2 == 5'd0) ? 32'b0 : reg_bank[rR2];
 
 endmodule

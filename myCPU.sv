@@ -186,8 +186,8 @@ module myCPU (
 		.wen      	(RegWrite_temp3 & valid_temp3),     // Input: 写使能（增加valid判断）
 		.waddr    	(instr_temp3[11:7]),  // Input: 写地址（rd）
 		.wdata      (wdata),         // Input: 写数据
-		.rR1   		(instr_temp[19:15]), // Input: 读地址1（rs1）
-		.rR2   		(instr_temp[24:20]), // Input: 读地址2（rs2）
+		.rR1   		(instr_temp1[19:15]), // Input: 读地址1（rs1）
+		.rR2   		(instr_temp1[24:20]), // Input: 读地址2（rs2）
 		.rR1_data  	(ALU_A),        // Output: 读数据1
 		.rR2_data	(ALU_B)         // Output: 读数据2
 	);
@@ -237,25 +237,25 @@ module myCPU (
 		.rst            (rst),
 
 		// ID/EX 阶段信号
-		.rs1_ex         (instr_temp[19:15]),
-		.rs2_ex         (instr_temp[24:20]),
-		.reg_data_A     (ALU_A_temp), // 注意：这里使用 dff_2 输出的 ALU_A/B，即寄存器堆读出的原始值
-		.reg_data_B     (ALU_B_temp),
+		.rs1_ex         (instr_temp1[19:15]),
+		.rs2_ex         (instr_temp1[24:20]),
+		.reg_data_A     (ALU_A), // 注意：这里使用 dff_2 输出的 ALU_A/B，即寄存器堆读出的原始值
+		.reg_data_B     (ALU_B),
 		.valid_ex       (valid_temp1),
 
 		// EX/MEM 阶段信号 (来自 dff_3 输出/当前 EX 阶段计算结果)
-		.rd_ex          (instr_temp1[11:7]),
-		.reg_write_ex   (RegWrite_temp),
-		.mem_to_reg_ex  (MemToReg_temp),
+		.rd_ex          (instr_temp2[11:7]),
+		.reg_write_ex   (RegWrite_temp1),
+		.mem_to_reg_ex  (MemToReg_temp1),
 		.alu_result_ex  (daddr),      // 当前 ALU 结果
 		.valid_mem      (valid_temp2), // 新增：EX/MEM阶段有效信号
 
 		// MEM/WB 阶段信号 (来自 dff_4 输出)
-		.rd_mem         (instr_temp2[11:7]),
-		.reg_write_mem  (RegWrite_temp1),
-		.mem_to_reg_mem (MemToReg_temp1),
+		.rd_mem         (instr_temp3[11:7]),
+		.reg_write_mem  (RegWrite_temp2),
+		.mem_to_reg_mem (MemToReg_temp2),
 		.alu_result_mem (daddr_temp),
-		.mem_data_mem   (mdata),
+		.mem_data_mem   (mdata_temp),
 		.valid_wb       (valid_temp3), // 新增：MEM/WB阶段有效信号
 
 		// 输出

@@ -155,9 +155,6 @@ module dff_3(
     input  logic [31:0] in_daddr,       // ALU 结果
     output logic [31:0] out_daddr,
 
-    input  logic [31:0] in_ALU_A,
-    output logic [31:0] out_ALU_A,
-
     input  logic [31:0] in_ALU_B,
     output logic [31:0] out_ALU_B,
 
@@ -184,7 +181,6 @@ module dff_3(
             //out_csr_wb    <= 0;
             out_ALU_B     <= 0;
             out_valid     <= 0;
-            out_ALU_A     <= 0;
         end
         else begin
             out_pc_add4   <= in_pc_add4;
@@ -198,7 +194,6 @@ module dff_3(
             //out_csr_wb    <= in_csr_wb;
             out_ALU_B     <= in_ALU_B;
             out_valid     <= in_valid;
-            out_ALU_A     <= in_ALU_A;
         end
     end
 endmodule
