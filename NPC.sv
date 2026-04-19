@@ -32,33 +32,36 @@ module NPC#(
     output logic [DATAWIDTH - 1:0] npc      ,  // 下一条指令地址
     output logic [DATAWIDTH - 1:0] pcadd4    // PC+4的结果
 );
-    
-    // NPC操作类型解码
-    logic op_branch, op_add4, op_jalr, op_jal;
-    logic [DATAWIDTH-1:0] branch_addr, jalr_addr, jal_addr;
 
-    // 根据npc_op解码操作类型
-    assign op_add4 = npc_op == `NPC_OP_ADD4;   // 顺序执行：PC+4
-    assign op_branch = npc_op == `NPC_OP_BRANCH; // 条件分支
-    assign op_jalr = npc_op == `NPC_OP_JALR;   // 寄存器间接跳转（JALR）
-    assign op_jal = npc_op == `NPC_OP_JAL;    // 直接跳转（JAL）
-
-    // 各类跳转地址计算
-    // 分支地址：条件满足时跳转到pc+offset，否则顺序执行pc+4
-    assign branch_addr = isTrue ? (pc + offset) : (pc + 4);
-    
-    // JALR地址：offset的最低位清零（保证字对齐）
-    assign jalr_addr = offset & {{DATAWIDTH - 1{1'b1}}, 1'b0};
-    
-    // JAL地址：pc + offset
-    assign jal_addr = pc + offset;
-    
-    // 最终NPC选择：根据操作类型选择对应的地址
-    assign npc = {32{op_add4}} & pcadd4 |
-            {32{op_branch}} & branch_addr |
-            {32{op_jalr}} & jalr_addr |
-            {32{op_jal}} & jal_addr;
-
-    // PC+4计算：顺序执行的下一条指令地址
     assign pcadd4 = pc + 4;
+
+    // 使用 always_comb 替代所有带判断的 assign
+    always_comb begin
+        // 初始化输出，避免 latch
+        npc = pcadd4; // 默认顺序执行
+
+        case (npc_op)
+            `NPC_OP_ADD4: begin
+                npc = pcadd4;
+            end
+            `NPC_OP_BRANCH: begin
+                if (isTrue) begin
+                    npc = pc + offset;
+                end else begin
+                    npc = pcadd4;
+                end
+            end
+            `NPC_OP_JALR: begin
+                // JALR: offset 最低位清零（字对齐）
+                npc = offset & {{DATAWIDTH - 1{1'b1}}, 1'b0};
+            end
+            `NPC_OP_JAL: begin
+                npc = pc + offset;
+            end
+            default: begin
+                npc = pcadd4;
+            end
+        endcase
+    end
+
 endmodule

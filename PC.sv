@@ -34,18 +34,21 @@ module PC#(
 );
     logic [DATAWIDTH - 1:0] reg_pc;             // PC寄存器，存储当前程序计数值
     logic rst_delay;                            // 复位延迟信号，用于同步复位
-
+/*
     // 将复位信号延迟一个时钟周期，确保复位信号能够正确地异步置位PC寄存器
     always_ff @(posedge clk) begin
         rst_delay <= rst;
     end
+*/
 
     // PC寄存器的主要逻辑：使用异步复位
     // 当rst或rst_delay为高电平时，PC被设置为复位值
     // 否则，在每个时钟上升沿将npc的值加载到PC寄存器中
     always_ff @(posedge clk, posedge rst) begin
-        if (rst | rst_delay) reg_pc <= RESET_VAL;  // 复位时设置为初始值
-        else reg_pc <= npc;                         // 正常工作时更新为下一个PC值
+        if (rst /*| rst_delay*/) 
+            reg_pc <= RESET_VAL;  // 复位时设置为初始值
+        else 
+            reg_pc <= npc;                         // 正常工作时更新为下一个PC值
     end 
 
     // 将内部PC寄存器的值赋给输出端口

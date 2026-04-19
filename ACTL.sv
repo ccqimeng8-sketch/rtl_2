@@ -50,8 +50,102 @@ module ACTL(
     logic op_add, op_sub, op_and, op_or, op_xor, op_sll, op_srl;
     logic op_sra, op_beq, op_bne, op_blt, op_bge, op_bgeu, op_bltu;
 
+    // 指令类型解码信号
+    logic rtype, itype, load, store, jalr, auipc, branch;
+
+    // 使用 always_comb 替代 assign
+    always_comb begin
+        // 初始化所有操作信号为0
+        op_add = 1'b0;
+        op_sub = 1'b0;
+        op_and = 1'b0;
+        op_or = 1'b0;
+        op_xor = 1'b0;
+        op_sll = 1'b0;
+        op_srl = 1'b0;
+        op_sra = 1'b0;
+        op_beq = 1'b0;
+        op_bne = 1'b0;
+        op_blt = 1'b0;
+        op_bge = 1'b0;
+        op_bgeu = 1'b0;
+        op_bltu = 1'b0;
+
+        // 判断指令类型
+        rtype = (opcode == `R_TYPE);
+        itype = (opcode == `I_TYPE);
+        load = (opcode == `IL_TYPE);
+        store = (opcode == `S_TYPE);
+        jalr = (opcode == `IJ_TYPE);
+        auipc = (opcode == `UA_TYPE);
+        branch = (opcode == `B_TYPE);
+
+        // 根据指令类型和funct字段设置操作信号
+        if (rtype) begin
+            case (funct)
+                4'b0000: op_add = 1'b1;
+                4'b1000: op_sub = 1'b1;
+                4'b0111: op_and = 1'b1;
+                4'b0110: op_or = 1'b1;
+                4'b0100: op_xor = 1'b1;
+                4'b0001: op_sll = 1'b1;
+                4'b0101: op_srl = 1'b1;
+                4'b1101: op_sra = 1'b1;
+                4'b0010: op_blt = 1'b1;
+                4'b0011: op_bltu = 1'b1;
+                default: ; // 保持为0
+            endcase
+        end else if (itype) begin
+            case (funct[2:0])
+                3'b000: op_add = 1'b1;
+                3'b111: op_and = 1'b1;
+                3'b110: op_or = 1'b1;
+                3'b100: op_xor = 1'b1;
+                3'b001: op_sll = 1'b1;
+                3'b101: op_srl = 1'b1;
+                3'b110: op_sra = 1'b1; // 注意：funct7=1时才是SRA，但此处仅用funct[3]==1判断不够，但原逻辑如此
+                3'b010: op_blt = 1'b1;
+                3'b011: op_bltu = 1'b1;
+                default: ;
+            endcase
+            // 特殊处理 SRA：需要检查 funct[3] 是否为1（即 funct == 4'b1101）
+            if (funct == 4'b1101)
+                op_sra = 1'b1;
+        end else if (load) begin
+            case (funct[2:0])
+                3'b000,
+                3'b001,
+                3'b010,
+                3'b100,
+                3'b101: op_add = 1'b1;
+                default: ;
+            endcase
+        end else if (store) begin
+            case (funct[2:0])
+                3'b000,
+                3'b001,
+                3'b010: op_add = 1'b1;
+                default: ;
+            endcase
+        end else if (auipc) begin
+            op_add = 1'b1;
+        end else if (jalr) begin
+            if (funct[2:0] == 3'b000)
+                op_add = 1'b1;
+        end else if (branch) begin
+            case (funct[2:0])
+                3'b000: op_beq = 1'b1;
+                3'b001: op_bne = 1'b1;
+                3'b100: op_blt = 1'b1;
+                3'b101: op_bge = 1'b1;
+                3'b110: op_bltu = 1'b1;
+                3'b111: op_bgeu = 1'b1;
+                default: ;
+            endcase
+        end
+    end
+
     // ALU控制信号生成：使用独热码选择对应的ALU操作
-    // 每个操作信号扩展为14位后与对应的操作码进行与运算，最后通过或运算合并
     assign ALUControl = {14{op_add}} & ADD |
                         {14{op_sub}} & SUB |
                         {14{op_and}} & AND |
@@ -66,64 +160,4 @@ module ACTL(
                         {14{op_bge}} & BGE |
                         {14{op_bgeu}} & BGEU |
                         {14{op_bltu}} & BLTU;
-
-    // 指令类型解码信号
-    logic rtype, itype, load, store, jalr, auipc, branch;
-
-    // 根据opcode判断指令类型
-    assign rtype = opcode == `R_TYPE;   // R型指令（寄存器-寄存器操作）
-    assign itype = opcode == `I_TYPE;   // I型指令（立即数操作）
-    assign load = opcode == `IL_TYPE;   // 加载指令（lw, lb, lh等）
-    assign store = opcode == `S_TYPE;   // 存储指令（sw, sb, sh等）
-    assign jalr = opcode == `IJ_TYPE;   // 寄存器间接跳转（jalr）
-    assign auipc = opcode == `UA_TYPE;  // PC相对地址计算（auipc）
-    assign branch = opcode == `B_TYPE;  // 分支指令（beq, bne等）
-
-    // ALU操作译码逻辑：根据指令类型和funct字段确定具体操作
-    
-    // 加法操作：R型(funct=0000)、I型、加载、存储、AUIPC、JALR
-    assign op_add = (rtype && funct == 4'b0000) ||
-                    (itype && funct[2:0] == 3'b000) ||
-                    (load && funct[2:0] == 3'b000) ||
-                    (load && funct[2:0] == 3'b001) ||
-                    (load && funct[2:0] == 3'b010) ||
-                    (load && funct[2:0] == 3'b100) ||
-                    (load && funct[2:0] == 3'b101) ||
-                    (store && funct[2:0] == 3'b000) ||
-                    (store && funct[2:0] == 3'b001) ||
-                    (store && funct[2:0] == 3'b010) ||
-                    auipc || (jalr && funct[2:0] == 3'b000);
-    
-    // 减法操作：仅R型指令(funct=1000)
-    assign op_sub = (rtype && funct == 4'b1000);
-    
-    // 按位与操作：R型和I型指令
-    assign op_and = (rtype && funct == 4'b0111) || (itype && funct[2:0] == 3'b111);
-    
-    // 按位或操作：R型和I型指令
-    assign op_or = (rtype && funct == 4'b0110) || (itype && funct[2:0] == 3'b110);
-    
-    // 按位异或操作：R型和I型指令
-    assign op_xor = (rtype && funct == 4'b0100) || (itype && funct[2:0] == 3'b100);
-    
-    // 逻辑左移：R型和I型指令(funct=0001)
-    assign op_sll = (rtype || itype) && funct == 4'b0001;
-    
-    // 逻辑右移：R型和I型指令(funct=0101)
-    assign op_srl = (rtype || itype) && funct == 4'b0101;
-    
-    // 算术右移：R型和I型指令(funct=1101)
-    assign op_sra = (rtype || itype) && funct == 4'b1101;
-    
-    // 无符号小于比较：用于BLTU指令
-    assign op_bltu = (rtype && funct == 4'b0011) || (branch && funct[2:0] == 3'b110) || (itype && funct[2:0] == 3'b011);
-    
-    // 有符号小于比较：用于BLT指令
-    assign op_blt = (rtype && funct == 4'b0010) || (branch && funct[2:0] == 3'b100) || (itype && funct[2:0] == 3'b010);
-    
-    // 分支指令的比较操作
-    assign op_beq = branch && funct[2:0] == 3'b000;   // 相等比较
-    assign op_bne = branch && funct[2:0] == 3'b001;   // 不等比较
-    assign op_bge = branch && funct[2:0] == 3'b101;   // 有符号大于等于比较
-    assign op_bgeu = branch && funct[2:0] == 3'b111;  // 无符号大于等于比较
 endmodule

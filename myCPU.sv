@@ -130,10 +130,18 @@ module myCPU (
 
 	// 偏移量选择：根据OffsetOrigin选择offset的来源
     // 00: 立即数，01: ALU结果，10: CSR计算的NPC
-    assign offset = ({32{OffsetOrigin == 2'b0}} & imm_temp & {32{valid_temp}}) |
-                    ({32{OffsetOrigin == 2'b01}} & daddr & {32{valid_temp}});
-                    //{32{OffsetOrigin == 2'b10}} & csr_npc;
-    
+    always_comb begin
+    if (!valid_temp)
+        offset = 32'b0;
+    else begin
+        case (OffsetOrigin)
+            2'b00: offset = imm_temp;
+            2'b01: offset = daddr;
+            default: offset = 32'b0;
+        endcase
+    	end
+	end
+
 	// IF/ID 流水线寄存器 (dff_1)
 	dff_1 dff1_inst(
 		.clk          (clk),
@@ -175,7 +183,7 @@ module myCPU (
 	RF #(ADDR_WIDTH, DATAWIDTH) rf_inst (
 		.clk        (clk),          // Input: 时钟信号
 		.rst        (rst),          // Input: 复位信号
-		.wen      	(RegWrite_temp3),     // Input: 写使能（增加valid判断）
+		.wen      	(RegWrite_temp3 & valid_temp3),     // Input: 写使能（增加valid判断）
 		.waddr    	(instr_temp3[11:7]),  // Input: 写地址（rd）
 		.wdata      (wdata),         // Input: 写数据
 		.rR1   		(instr_temp[19:15]), // Input: 读地址1（rs1）
@@ -233,12 +241,14 @@ module myCPU (
 		.rs2_ex         (instr_temp[24:20]),
 		.reg_data_A     (ALU_A_temp), // 注意：这里使用 dff_2 输出的 ALU_A/B，即寄存器堆读出的原始值
 		.reg_data_B     (ALU_B_temp),
+		.valid_ex       (valid_temp1),
 
 		// EX/MEM 阶段信号 (来自 dff_3 输出/当前 EX 阶段计算结果)
 		.rd_ex          (instr_temp1[11:7]),
 		.reg_write_ex   (RegWrite_temp),
 		.mem_to_reg_ex  (MemToReg_temp),
 		.alu_result_ex  (daddr),      // 当前 ALU 结果
+		.valid_mem      (valid_temp2), // 新增：EX/MEM阶段有效信号
 
 		// MEM/WB 阶段信号 (来自 dff_4 输出)
 		.rd_mem         (instr_temp2[11:7]),
@@ -246,6 +256,7 @@ module myCPU (
 		.mem_to_reg_mem (MemToReg_temp1),
 		.alu_result_mem (daddr_temp),
 		.mem_data_mem   (mdata),
+		.valid_wb       (valid_temp3), // 新增：MEM/WB阶段有效信号
 
 		// 输出
 		.fwd_alu_a      (ALU_A_fwd),
@@ -305,8 +316,8 @@ module myCPU (
 		.out_funct      (funct_temp1),
 		.in_MemToReg    (MemToReg_temp),
 		.out_MemToReg   (MemToReg_temp1),
-		.in_pc_add4      (pcadd4_temp1),
-		.out_pc_add4     (pcadd4_temp2),
+		.in_pc_add4     (pcadd4_temp1),
+		.out_pc_add4    (pcadd4_temp2),
 		.in_daddr       (daddr),
 		.out_daddr      (daddr_temp),
 		.in_imm         (imm_temp),
@@ -325,7 +336,7 @@ module myCPU (
 
 	// Mask模块：数据掩码处理
 	Mask #(DATAWIDTH) mask_inst (
-		.mask   	(funct_temp2[2:0]), // Input: 掩码控制信号
+		.mask   	(funct_temp1[2:0]), // Input: 掩码控制信号
 		.dout	  	(perip_rdata),       // Input: 从存储器读出的原始数据
 		.mdata		(mdata)       // Output: 处理后的数据 (修改为来自 dff_4 的输出)
 	);
@@ -371,8 +382,8 @@ module myCPU (
 		    `MEM_TO_REG_PCADD4, pcadd4_temp3,
 		    `MEM_TO_REG_ALU   , daddr_temp1	,
 		    `MEM_TO_REG_MEM   , mdata_temp,
-		    `MEM_TO_REG_IMM   , imm_temp2	
-		    //`MEM_TO_REG_CSR   , 32'b0
+		    `MEM_TO_REG_IMM   , imm_temp2,
+		    `MEM_TO_REG_CSR   , 32'b0
 	    })
     );
 endmodule
