@@ -230,14 +230,14 @@ module myCPU (
 		.rd_ex          (instr_temp2[11:7]),
 		.reg_write_ex   (RegWrite_temp1),
 		.mem_to_reg_ex  (MemToReg_temp1),
-		.alu_result_ex  (daddr),      // 当前 ALU 结果
+		.alu_result_ex  (daddr_temp),      // 当前 ALU 结果
 		.valid_mem      (valid_temp2), // 新增：EX/MEM阶段有效信号
 
 		// MEM/WB 阶段信号 (来自 dff_4 输出)
 		.rd_mem         (instr_temp3[11:7]),
 		.reg_write_mem  (RegWrite_temp2),
 		.mem_to_reg_mem (MemToReg_temp2),
-		.alu_result_mem (daddr_temp),
+		.alu_result_mem (daddr_temp1),
 		.mem_data_mem   (mdata_temp),
 		.valid_wb       (valid_temp3), // 新增：MEM/WB阶段有效信号
 
@@ -304,12 +304,20 @@ module myCPU (
 		.mdata		(mdata)       // Output: 处理后的数据 (修改为来自 dff_4 的输出)
 	);
 
-	//MEM_Access stage
-	assign perip_addr = daddr_temp;
-    assign perip_wen  = MemWrite_temp1 & valid_temp2;  // 增加valid判断（注意：MemWrite_temp1来自dff_3，对应valid_temp2）
-    assign perip_mask = funct_temp1[1:0];  
-    assign perip_wdata = ALU_B_fwd_temp;
-
+	always_ff @(posedge clk) begin
+		if (rst) begin
+			perip_addr <= 0;
+    		perip_wen  <= 0;  // 增加valid判断（注意：MemWrite_temp1来自dff_3，对应valid_temp2）
+    		perip_mask <= 0;  
+    		perip_wdata <= 0;
+		end else begin
+			perip_addr <= daddr_temp;
+    		perip_wen  <= MemWrite_temp1 & valid_temp2;  // 增加valid判断（注意：MemWrite_temp1来自dff_3，对应valid_temp2）
+    		perip_mask <= funct_temp1[1:0];  
+    		perip_wdata <= ALU_B_fwd_temp;
+		end
+	end
+	
 	dff_4 dff_4_inst (
 		.clk            (clk),
 		.rst            (rst),
