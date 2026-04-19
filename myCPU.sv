@@ -183,7 +183,7 @@ module myCPU (
 	RF #(ADDR_WIDTH, DATAWIDTH) rf_inst (
 		.clk        (clk),          // Input: 时钟信号
 		.rst        (rst),          // Input: 复位信号
-		.wen      	(RegWrite_temp3 & valid_temp3),     // Input: 写使能（增加valid判断）
+		.wen      	(RegWrite_temp2 & valid_temp3),     // Input: 写使能（增加valid判断）
 		.waddr    	(instr_temp3[11:7]),  // Input: 写地址（rd）
 		.wdata      (wdata),         // Input: 写数据
 		.rR1   		(instr_temp1[19:15]), // Input: 读地址1（rs1）
