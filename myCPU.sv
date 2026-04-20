@@ -95,7 +95,7 @@ module myCPU (
 
 	// IROM接口连接：PC输出到指令存储器，读取指令
 	assign irom_addr = pc;
-	assign instr = irom_data;  // 修正：instr 才是后续使用的信号
+	assign instr = irom_data;  
 	assign clk 			= cpu_clk;             	// 时钟信号传递
     assign rst 			= cpu_rst;             	// 复位信号传递
 
@@ -116,7 +116,8 @@ module myCPU (
 		.pc       (pc)		, // Input: 当前PC值
 		.offset   (offset)	, // Input: 偏移量
 		.npc      (npc)		, // Output: 下一条指令地址
-		.pcadd4	  (pcadd4)    // Output: PC+4的结果 (连接到中间信号)
+		.pcadd4	  (pcadd4)	, // Output: PC+4的结果 (连接到中间信号)
+		.pc_from_ex (pc_temp2)
 	);
 
 	// 偏移量选择：根据OffsetOrigin选择offset的来源
@@ -135,6 +136,7 @@ module myCPU (
 
 	// IF/ID 流水线寄存器 (dff_1)
 	dff_1 dff1_inst(
+		.flush        (isTrue_temp),
 		.clk          (clk),
 		.rst          (rst),
 		.in_pc_add4   (pcadd4),
@@ -171,6 +173,7 @@ module myCPU (
 	);
 
 	dff_2 dff_2_inst (
+		.flush        	(isTrue_temp),
 		.clk      		(clk),         // Input: 时钟
 		.rst      		(rst),         // Input: 复位
 		.in_pc_add4 	(pcadd4_temp),      // Input: 来自 dff_1 的 PC+4
@@ -279,6 +282,8 @@ module myCPU (
 		.out_MemToReg   (MemToReg_temp1),
 		.in_pc_add4     (pcadd4_temp1),
 		.out_pc_add4    (pcadd4_temp2),
+		.in_pc          (pc_temp1),
+		.out_pc         (pc_temp2),
 		.in_daddr       (daddr),
 		.out_daddr      (daddr_temp),
 		.in_imm         (imm_temp),

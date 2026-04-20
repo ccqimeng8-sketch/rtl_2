@@ -29,8 +29,10 @@ module NPC#(
     input  logic [1:0]             npc_op   ,  // NPC操作选择（2位）
     input  logic [DATAWIDTH - 1:0] pc       ,  // 当前PC值
     input  logic [DATAWIDTH - 1:0] offset   ,  // 偏移量
+    input  logic [DATAWIDTH - 1:0] pc_from_ex ,  // rs1数据
     output logic [DATAWIDTH - 1:0] npc      ,  // 下一条指令地址
     output logic [DATAWIDTH - 1:0] pcadd4    // PC+4的结果
+    
 );
 
     assign pcadd4 = pc + 4;
@@ -46,7 +48,7 @@ module NPC#(
             end
             `NPC_OP_BRANCH: begin
                 if (isTrue) begin
-                    npc = pc + offset;
+                    npc = pc_from_ex + offset;
                 end else begin
                     npc = pcadd4;
                 end
@@ -56,7 +58,7 @@ module NPC#(
                 npc = offset & {{DATAWIDTH - 1{1'b1}}, 1'b0};
             end
             `NPC_OP_JAL: begin
-                npc = pc + offset;
+                npc = pc_from_ex + offset;
             end
             default: begin
                 npc = pcadd4;

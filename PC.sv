@@ -33,13 +33,13 @@ module PC#(
     output logic [DATAWIDTH - 1:0] pc_out        // 当前PC值输出
 );
     logic [DATAWIDTH - 1:0] reg_pc;             // PC寄存器，存储当前程序计数值
-/*
+    /*
+    logic                   rst_delay;
     // 将复位信号延迟一个时钟周期，确保复位信号能够正确地异步置位PC寄存器
     always_ff @(posedge clk) begin
         rst_delay <= rst;
     end
 */
-
     // PC寄存器的主要逻辑：使用异步复位
     // 当rst或rst_delay为高电平时，PC被设置为复位值
     // 否则，在每个时钟上升沿将npc的值加载到PC寄存器中

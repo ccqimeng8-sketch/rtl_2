@@ -1,5 +1,7 @@
 //Program Counter到Control Unit的寄存器
 module dff_1 (
+    input logic flush,
+
     input  logic clk,
     input  logic rst,
 
@@ -16,9 +18,9 @@ module dff_1 (
     output logic out_valid
 );
     always @(posedge clk) begin
-        if (rst) begin
+        if (rst || flush) begin
             out_pc_add4 <= 0;
-            out_instr <= 0;
+            out_instr <= 32'h00000013;
             out_pc <= 0;
             out_valid <= 0;
         end
@@ -33,6 +35,8 @@ endmodule
 
 //Control Unit和IMMGEN到regfile的寄存器 (实际为 ID/EX 流水线寄存器)
 module dff_2(
+    input logic flush,
+
     input  logic clk,
     input  logic rst,
 
@@ -87,7 +91,7 @@ module dff_2(
     output logic [31:0] out_ALU_B
 );
     always @(posedge clk) begin
-        if (rst) begin
+        if (rst || flush) begin
             out_NpcOp <= 0;
             out_RegWrite <= 0;
             out_MemToReg <= 0;
@@ -96,7 +100,7 @@ module dff_2(
             out_ALUSrcA <= 0;
             out_ALUSrcB <= 0;
             out_imm <= 0;
-            out_opcode <= 0;
+            out_opcode <= 7'b0010011;
             out_funct <= 0;
             out_pc <= 0;
             out_pc_add4 <= 0;
@@ -168,8 +172,11 @@ module dff_3(
     output logic out_isTrue,
 
     input  logic [1:0] in_OffsetOrigin,
-    output logic [1:0] out_OffsetOrigin
-);
+    output logic [1:0] out_OffsetOrigin,
+
+    input  logic [31:0] in_pc,
+    output logic [31:0] out_pc
+    );
  
     always @(posedge clk) begin
         if (rst) begin
@@ -185,6 +192,7 @@ module dff_3(
             out_valid     <= 0;
             out_isTrue   <= 0;
             out_OffsetOrigin <= 0;
+            out_pc        <= 0;
         end
         else begin
             out_pc_add4   <= in_pc_add4;
@@ -199,6 +207,7 @@ module dff_3(
             out_valid     <= in_valid;
             out_isTrue    <= in_isTrue;
             out_OffsetOrigin <= in_OffsetOrigin;
+            out_pc        <= in_pc;
         end
     end
 endmodule
