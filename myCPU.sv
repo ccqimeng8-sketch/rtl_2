@@ -93,6 +93,8 @@ module myCPU (
 	logic [DATAWIDTH-1:0]	ALU_A_fwd, ALU_B_fwd;
 	logic [DATAWIDTH-1:0]	ALU_B_fwd_temp;
 
+	logic flush;
+
 	// IROM接口连接：PC输出到指令存储器，读取指令
 	assign irom_addr = pc;
 	assign instr = irom_data;  
@@ -136,7 +138,7 @@ module myCPU (
 
 	// IF/ID 流水线寄存器 (dff_1)
 	dff_1 dff1_inst(
-		.flush        (isTrue),
+		.flush        (flush),
 		.clk          (clk),
 		.rst          (rst),
 		.in_pc_add4   (pcadd4),
@@ -173,7 +175,7 @@ module myCPU (
 	);
 
 	dff_2 dff_2_inst (
-		.flush        	(isTrue),
+		.flush        	(flush),
 		.clk      		(clk),         // Input: 时钟
 		.rst      		(rst),         // Input: 复位
 		.in_pc_add4 	(pcadd4_temp),      // Input: 来自 dff_1 的 PC+4
@@ -210,9 +212,9 @@ module myCPU (
 	RF #(ADDR_WIDTH, DATAWIDTH) rf_inst (
 		.clk        (clk),          // Input: 时钟信号
 		.rst        (rst),          // Input: 复位信号
-		.wen      	(RegWrite_temp3),     // Input: 写使能（增加valid判断）
-		.waddr    	(instr_temp4[11:7]),  // Input: 写地址（rd）
-		.wdata      (wdata_temp),         // Input: 写数据
+		.wen      	(RegWrite_temp2),     // Input: 写使能（增加valid判断）
+		.waddr    	(instr_temp3[11:7]),  // Input: 写地址（rd）
+		.wdata      (wdata),         // Input: 写数据
 		.rR1   		(instr_temp1[19:15]), // Input: 读地址1（rs1）
 		.rR2   		(instr_temp1[24:20]), // Input: 读地址2（rs2）
 		.rR1_data  	(ALU_A),        // Output: 读数据1
@@ -264,6 +266,8 @@ module myCPU (
 		.isTrue      (isTrue)       // Output: 分支条件判断结果
 	);
 
+	assign flush = isTrue || NpcOp_temp;
+
 	// ACTL模块：ALU控制单元
 	ACTL actl_inst (
 		.opcode       (opcode_temp),     // Input: 指令操作码
@@ -309,20 +313,25 @@ module myCPU (
 		.mdata		(mdata)       // Output: 处理后的数据 (修改为来自 dff_4 的输出)
 	);
 
+	assign perip_addr  = daddr_temp;
+	assign perip_wen   = MemWrite_temp1;
+	assign perip_mask  = funct_temp1[1:0];
+	assign perip_wdata = ALU_B_fwd_temp;
+/*
 	always_ff @(posedge clk) begin
 		if (rst) begin
 			perip_addr <= 0;
-    		perip_wen  <= 0;  // 增加valid判断（注意：MemWrite_temp1来自dff_3，对应valid_temp2）
+    		perip_wen  <= 0;  
     		perip_mask <= 0;  
     		perip_wdata <= 0;
 		end else begin
 			perip_addr <= daddr_temp;
-    		perip_wen  <= MemWrite_temp1;  // 增加valid判断（注意：MemWrite_temp1来自dff_3，对应valid_temp2）
+    		perip_wen  <= MemWrite_temp1;  
     		perip_mask <= funct_temp1[1:0];  
     		perip_wdata <= ALU_B_fwd_temp;
 		end
 	end
-	
+*/
 	dff_4 dff_4_inst (
 		.clk            (clk),
 		.rst            (rst),
@@ -360,7 +369,7 @@ module myCPU (
 		    `MEM_TO_REG_CSR   , 32'b0
 	    })
     );
-
+	/*
 	always_ff @(posedge clk) begin 
 		if (rst) begin
 			wdata_temp <= 0;
@@ -373,4 +382,5 @@ module myCPU (
 			instr_temp4 <= instr_temp3;
 		end
 	end
+	*/
 endmodule
