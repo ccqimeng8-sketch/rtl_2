@@ -1,9 +1,8 @@
 //Program Counter到Control Unit的寄存器
 module dff_1 (
-    input logic flush,
-
-    input  logic clk,
-    input  logic rst,
+    input logic clk,
+    input logic rst,
+    input logic flush,   
 
     input  logic [31:0] in_pc_add4,
     output logic [31:0] out_pc_add4,
@@ -18,11 +17,13 @@ module dff_1 (
     output logic out_valid
 );
     always @(posedge clk) begin
-        if (rst || flush) begin
-            out_pc_add4 <= 0;
-            out_instr <= 32'h00000013;
-            out_pc <= 0;
-            out_valid <= 0;
+    if (rst) begin
+    end 
+    else if (flush) begin   
+        out_pc_add4 <= 0;
+        out_instr   <= 0;
+        out_pc      <= 0;
+        out_valid   <= 0;
         end
         else begin
             out_pc_add4 <= in_pc_add4;
@@ -35,10 +36,9 @@ endmodule
 
 //Control Unit和IMMGEN到regfile的寄存器 (实际为 ID/EX 流水线寄存器)
 module dff_2(
-    input logic flush,
-
     input  logic clk,
     input  logic rst,
+    input logic flush,
 
     input  logic [31:0] in_pc_add4,
     output logic [31:0] out_pc_add4,
@@ -91,7 +91,7 @@ module dff_2(
     output logic [31:0] out_ALU_B
 );
     always @(posedge clk) begin
-        if (rst || flush) begin
+        if (rst) begin
             out_NpcOp <= 0;
             out_RegWrite <= 0;
             out_MemToReg <= 0;
@@ -100,7 +100,7 @@ module dff_2(
             out_ALUSrcA <= 0;
             out_ALUSrcB <= 0;
             out_imm <= 0;
-            out_opcode <= 7'b0010011;
+            out_opcode <= 0;
             out_funct <= 0;
             out_pc <= 0;
             out_pc_add4 <= 0;
@@ -109,6 +109,13 @@ module dff_2(
             out_ALU_A <= 0;
             out_ALU_B <= 0;
         end
+        else if (flush) begin   
+            out_instr <= 0;
+            out_valid <= 0;
+            out_RegWrite <= 0;
+            out_MemWrite <= 0;
+            out_MemToReg <= 0;
+    end
         else begin
             out_NpcOp <= in_NpcOp;
             out_RegWrite <= in_RegWrite;
@@ -133,6 +140,7 @@ endmodule
 module dff_3(
     input  logic        clk,
     input  logic        rst,
+    input  logic        flush,
 
     // PC+4
     input  logic [31:0] in_pc_add4,
@@ -172,11 +180,8 @@ module dff_3(
     output logic out_isTrue,
 
     input  logic [1:0] in_OffsetOrigin,
-    output logic [1:0] out_OffsetOrigin,
-
-    input  logic [31:0] in_pc,
-    output logic [31:0] out_pc
-    );
+    output logic [1:0] out_OffsetOrigin
+);
  
     always @(posedge clk) begin
         if (rst) begin
@@ -192,8 +197,14 @@ module dff_3(
             out_valid     <= 0;
             out_isTrue   <= 0;
             out_OffsetOrigin <= 0;
-            out_pc        <= 0;
         end
+        else if (flush) begin   
+            out_instr <= 0;
+            out_valid <= 0;
+            out_RegWrite <= 0;
+            out_MemWrite <= 0;
+            out_MemToReg <= 0;
+         end
         else begin
             out_pc_add4   <= in_pc_add4;
             out_instr     <= in_instr;
@@ -207,7 +218,6 @@ module dff_3(
             out_valid     <= in_valid;
             out_isTrue    <= in_isTrue;
             out_OffsetOrigin <= in_OffsetOrigin;
-            out_pc        <= in_pc;
         end
     end
 endmodule
@@ -216,6 +226,7 @@ endmodule
 module dff_4(
     input  logic clk,
     input  logic rst,
+    input  logic flush,
 
     // 控制信号：决定写回数据的来源
     input  logic [2:0] in_MemToReg,
@@ -260,6 +271,13 @@ module dff_4(
             out_instr    <= 0;
             out_mdata    <= 0;
             out_valid    <= 0;
+        end
+        else if (flush) begin 
+             out_instr <= 0;
+             out_valid <= 0;
+             out_RegWrite <= 0;
+             out_MemWrite <= 0;
+             out_MemToReg <= 0;
         end
         else begin
             out_MemToReg <= in_MemToReg;
