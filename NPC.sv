@@ -29,6 +29,7 @@ module NPC#(
     input  logic [1:0]             npc_op   ,  // NPC操作选择（2位）
     input  logic [DATAWIDTH - 1:0] pc       ,  // 当前PC值
     input  logic [DATAWIDTH - 1:0] offset   ,  // 偏移量
+    input  logic predict_taken              ,  // 分支预测结果
     output logic [DATAWIDTH - 1:0] npc      ,  // 下一条指令地址
     output logic [DATAWIDTH - 1:0] pcadd4    // PC+4的结果
 );
@@ -45,10 +46,10 @@ module NPC#(
                 npc = pcadd4;
             end
             `NPC_OP_BRANCH: begin
-                if (isTrue) begin
-                    npc = pc + offset;
+                if (predict_taken) begin
+                    npc = pc + offset;  // 预测跳转
                 end else begin
-                    npc = pcadd4;
+                    npc = pcadd4;  // 预测不跳
                 end
             end
             `NPC_OP_JALR: begin
