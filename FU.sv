@@ -36,54 +36,49 @@ module FU (
     // --- 前推控制信号生成 ---
     
     // 前推 A (rs1)
-    assign fwd_a_ex  = valid_mem && (rs1_ex != 0) && (rd_ex != 0) && (rs1_ex == rd_ex)  && reg_write_ex;
-    assign fwd_a_mem = valid_wb  && (rs1_ex != 0) && (rd_mem != 0) && (rs1_ex == rd_mem) && reg_write_mem;
+    assign fwd_a_ex  = (rs1_ex != 0) && (rd_ex != 0) && (rs1_ex == rd_ex)  && reg_write_ex;
+    assign fwd_a_mem = (rs1_ex != 0) && (rd_mem != 0) && (rs1_ex == rd_mem) && reg_write_mem;
 
     // 前推 B (rs2)
-    assign fwd_b_ex  = valid_mem && (rs2_ex != 0) && (rd_ex != 0) && (rs2_ex == rd_ex)  && reg_write_ex;
-    assign fwd_b_mem = valid_wb  && (rs2_ex != 0) && (rd_mem != 0) && (rs2_ex == rd_mem) && reg_write_mem;
+    assign fwd_b_ex  = (rs2_ex != 0) && (rd_ex != 0) && (rs2_ex == rd_ex)  && reg_write_ex;
+    assign fwd_b_mem = (rs2_ex != 0) && (rd_mem != 0) && (rs2_ex == rd_mem) && reg_write_mem;
 
     // --- 前推数据选择 ---
     always_comb begin
-        // 默认值：来自寄存器堆读出的数据
+        // 修改：默认值设为寄存器堆读出的数据
         fwd_data_a = reg_data_A;
         fwd_data_b = reg_data_B;
 
-        // 只有当前指令有效时才考虑前推，否则输出0
-        if (valid_ex) begin
-            // 选择 A 的前推数据
-            if (fwd_a_ex) begin
-                // 从 EX 阶段前推：只有当上一条指令不是 Load 时，ALU 结果才有效
-                if (mem_to_reg_ex != `MEM_TO_REG_MEM) begin 
-                    fwd_data_a = alu_result_ex;
-                end
-            end 
-            else if (fwd_a_mem) begin
-                // 从 MEM 阶段前推
-                if (mem_to_reg_mem == `MEM_TO_REG_MEM) begin
-                    fwd_data_a = mem_data_mem;
-                end else begin
-                    fwd_data_a = alu_result_mem;
-                end
+        // 选择 A 的前推数据
+        if (fwd_a_ex) begin
+            // 从 EX 阶段前推：只有当上一条指令不是 Load 时，ALU 结果才有效
+            if (mem_to_reg_ex != `MEM_TO_REG_MEM) begin 
+                fwd_data_a = alu_result_ex;
             end
-
-            // 选择 B 的前推数据
-            if (fwd_b_ex) begin
-                if (mem_to_reg_ex != `MEM_TO_REG_MEM) begin
-                    fwd_data_b = alu_result_ex;
-                end
-            end else if (fwd_b_mem) begin
-                if (mem_to_reg_mem == `MEM_TO_REG_MEM) begin
-                    fwd_data_b = mem_data_mem;
-                end else begin
-                    fwd_data_b = alu_result_mem;
-                end
+        end 
+        else if (fwd_a_mem) begin
+            // 从 MEM 阶段前推
+            if (mem_to_reg_mem == `MEM_TO_REG_MEM) begin
+                fwd_data_a = mem_data_mem;
+            end else begin
+                fwd_data_a = alu_result_mem;
             end
-        end else begin
-            // 当前指令无效，输出清零防止不定态
-            fwd_data_a = 32'b0;
-            fwd_data_b = 32'b0;
         end
+        // 否则保持为0
+
+        // 选择 B 的前推数据
+        if (fwd_b_ex) begin
+            if (mem_to_reg_ex != `MEM_TO_REG_MEM) begin
+                fwd_data_b = alu_result_ex;
+            end
+        end else if (fwd_b_mem) begin
+            if (mem_to_reg_mem == `MEM_TO_REG_MEM) begin
+                fwd_data_b = mem_data_mem;
+            end else begin
+                fwd_data_b = alu_result_mem;
+            end
+        end
+        // 否则保持为0
     end
     
     assign fwd_alu_a = fwd_data_a;

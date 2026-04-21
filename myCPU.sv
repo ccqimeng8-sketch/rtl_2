@@ -111,13 +111,13 @@ module myCPU (
 
 	// NPC模块：下一程序计数器计算
 	NPC #(DATAWIDTH) npc_inst (
-		.isTrue   (isTrue_temp)	, // Input: 分支条件判断结果
+		.isTrue   (isTrue)	, // Input: 分支条件判断结果
 		.npc_op   (NpcOp_temp)	, // Input: NPC操作选择
 		.pc       (pc)		, // Input: 当前PC值
 		.offset   (offset)	, // Input: 偏移量
 		.npc      (npc)		, // Output: 下一条指令地址
 		.pcadd4	  (pcadd4)	, // Output: PC+4的结果 (连接到中间信号)
-		.pc_from_ex (pc_temp2)
+		.pc_from_ex (pc_temp1)
 	);
 
 	// 偏移量选择：根据OffsetOrigin选择offset的来源
@@ -127,8 +127,8 @@ module myCPU (
         offset = 32'b0;
     else begin
         case (OffsetOrigin_temp1)
-            2'b00: offset = imm_temp1;
-            2'b01: offset = daddr_temp;
+            2'b00: offset = imm_temp;
+            2'b01: offset = daddr;
             default: offset = 32'b0;
         endcase
     	end
@@ -136,7 +136,7 @@ module myCPU (
 
 	// IF/ID 流水线寄存器 (dff_1)
 	dff_1 dff1_inst(
-		.flush        (isTrue_temp),
+		.flush        (isTrue),
 		.clk          (clk),
 		.rst          (rst),
 		.in_pc_add4   (pcadd4),
@@ -173,7 +173,7 @@ module myCPU (
 	);
 
 	dff_2 dff_2_inst (
-		.flush        	(isTrue_temp),
+		.flush        	(isTrue),
 		.clk      		(clk),         // Input: 时钟
 		.rst      		(rst),         // Input: 复位
 		.in_pc_add4 	(pcadd4_temp),      // Input: 来自 dff_1 的 PC+4
@@ -317,7 +317,7 @@ module myCPU (
     		perip_wdata <= 0;
 		end else begin
 			perip_addr <= daddr_temp;
-    		perip_wen  <= MemWrite_temp1 & valid_temp2;  // 增加valid判断（注意：MemWrite_temp1来自dff_3，对应valid_temp2）
+    		perip_wen  <= MemWrite_temp1;  // 增加valid判断（注意：MemWrite_temp1来自dff_3，对应valid_temp2）
     		perip_mask <= funct_temp1[1:0];  
     		perip_wdata <= ALU_B_fwd_temp;
 		end
