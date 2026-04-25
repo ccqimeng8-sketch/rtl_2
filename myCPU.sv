@@ -94,6 +94,8 @@ module myCPU (
 	logic [DATAWIDTH-1:0]	ALU_B_fwd_temp;
 
 	logic flush;
+	logic predict_taken;
+	logic branch;
 
 	// IROM接口连接：PC输出到指令存储器，读取指令
 	assign irom_addr = pc;
@@ -113,6 +115,8 @@ module myCPU (
 
 	// NPC模块：下一程序计数器计算
 	NPC #(DATAWIDTH) npc_inst (
+		.clk      (clk) ,
+		.rst      (rst) ,
 		.isTrue   (isTrue)	, // Input: 分支条件判断结果
 		.npc_op   (NpcOp_temp)	, // Input: NPC操作选择
 		.pc       (pc)		, // Input: 当前PC值
@@ -167,6 +171,7 @@ module myCPU (
 		.ALUSrcA      	(ALUSrcA)		, // Output: ALU操作数A来源选择
 		.ALUSrcB      	(ALUSrcB)       // Output: ALU操作数B来源选择
 	);
+	assign branch = (NpcOp_temp ! = 0);
 
 	// IMMGEN模块：立即数生成器
 	IMMGEN #(DATAWIDTH) immgen_inst (
@@ -266,7 +271,7 @@ module myCPU (
 		.isTrue      (isTrue)       // Output: 分支条件判断结果
 	);
 
-	assign flush = isTrue || NpcOp_temp;
+	assign flush = branch && (predict_taken != isTrue);
 
 	// ACTL模块：ALU控制单元
 	ACTL actl_inst (
