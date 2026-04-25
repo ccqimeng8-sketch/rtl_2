@@ -30,6 +30,10 @@ module NPC#(
     input  logic [DATAWIDTH - 1:0] pc       ,  // 当前PC值
     input  logic [DATAWIDTH - 1:0] offset   ,  // 偏移量
     input  logic [DATAWIDTH - 1:0] pc_from_ex ,  // rs1数据
+    input  logic                   pred_taken ,
+    input  logic [DATAWIDTH - 1:0] pred_target ,
+    input  logic                   mmispredict , 
+    input  logic [DATAWIDTH - 1:0] correct_pc , 
     output logic [DATAWIDTH - 1:0] npc      ,  // 下一条指令地址
     output logic [DATAWIDTH - 1:0] pcadd4    // PC+4的结果
     
@@ -41,24 +45,26 @@ module NPC#(
     always_comb begin
         // 初始化输出，避免 latch
         npc = pcadd4; // 默认顺序执行
-
+        if (mispredict) begin
+            npc = correct_pc;
+        end
+        else begin
         case (npc_op)
             `NPC_OP_ADD4: begin
                 npc = pcadd4;
             end
             `NPC_OP_BRANCH: begin
-                if (isTrue) begin
-                    npc = pc_from_ex + offset;
-                end else begin
+                if (pred_taken) 
+                    npc = pred_target;
+                else
                     npc = pcadd4;
-                end
-            end
+             end
+            `NPC_OP_JAL: begin
+                npc = pc + offset;
+            end   
             `NPC_OP_JALR: begin
                 // JALR: offset 最低位清零（字对齐）
-                npc = offset & {{DATAWIDTH - 1{1'b1}}, 1'b0};
-            end
-            `NPC_OP_JAL: begin
-                npc = pc_from_ex + offset;
+                npc = (pc_from_ex + offset) & ~32'b1;
             end
             default: begin
                 npc = pcadd4;
