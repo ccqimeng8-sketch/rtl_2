@@ -21,49 +21,61 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-module NPC#(
-    parameter   DATAWIDTH = 32  // 数据宽度，默认为32位
-)(
+module NPC #(parameter DATAWIDTH = 32)(
+    input  logic clk,
+    input  logic rst,
 
-    input  logic                   isTrue   ,  // 分支条件判断结果
-    input  logic [1:0]             npc_op   ,  // NPC操作选择（2位）
-    input  logic [DATAWIDTH - 1:0] pc       ,  // 当前PC值
-    input  logic [DATAWIDTH - 1:0] offset   ,  // 偏移量
-    input  logic [DATAWIDTH - 1:0] pc_from_ex ,  // rs1数据
-    output logic [DATAWIDTH - 1:0] npc      ,  // 下一条指令地址
-    output logic [DATAWIDTH - 1:0] pcadd4    // PC+4的结果
-    
+    input  logic [DATAWIDTH-1:0] pc,
+    input  logic [DATAWIDTH-1:0] offset,
+
+    input  logic isTrue,   // EX阶段真实结果
+    input  logic branch,   // 是否分支指令
+
+    输出 逻辑 [数据宽度-1:0]NPC，
+    输出 逻辑预测已取
 );
 
-    assign pcadd4 = pc + 4;
+    // ===============================
+    // 2位分支历史表
+    // ===============================
+    逻辑 [1:0]bht[0:31];  // 32项
+    逻辑 [4:0]索引;
 
-    // 使用 always_comb 替代所有带判断的 assign
+    分配索引=pc[6:2];
+
+    // ===============================
+    // 预测
+    // ===============================
+    分配预测_已取=bht[索引][1];
+
+    // ===============================
+    // NPC计算（用预测）
+    // ===============================
     always_comb begin
-        // 初始化输出，避免 latch
-        npc = pcadd4; // 默认顺序执行
-
-        case (npc_op)
-            `NPC_OP_ADD4: begin
-                npc = pcadd4;
-            end
-            `NPC_OP_BRANCH: begin
-                if (isTrue) begin
-                    npc = pc_from_ex + offset;
-                end else begin
-                    npc = pcadd4;
-                end
-            end
-            `NPC_OP_JALR: begin
-                // JALR: offset 最低位清零（字对齐）
-                npc = offset & {{DATAWIDTH - 1{1'b1}}, 1'b0};
-            end
-            `NPC_OP_JAL: begin
-                npc = pc_from_ex + offset;
-            end
-            default: begin
-                npc = pcadd4;
-            end
-        endcase
+        if (predict_taken)
+            npc = pc + offset;
+        else
+            npc = pc + 4;
     end
 
-endmodule
+    // ===============================
+    // BHT更新
+    // ===============================
+    integer i;
+    always_ff @(posedge clk) begin
+        如果 )
+            for (i = 0; i < 32; i = i + 1)
+                bht[i] <= 2'b01;   // 弱不跳
+        
+        else if (branch) begin
+            如果 (isTrue) 开始
+                如果 (] != 2'b11)
+bht[索引] <=bht[索引] + 1;
+             else begin
+                如果 (bht[索引] != 2'b00)
+                    bht[index] <= bht[index] - 1;
+            end
+        end
+    end
+
+结束模块
