@@ -1,57 +1,57 @@
 // ============================================================================
-// Module : regfile
-// Project: RISC-V 2-Issue Superscalar Processor
-// Description: 32x32-bit register file with 4 read ports and 2 write ports.
-//              - Read Port 0: Lane 0 rs1
-//              - Read Port 1: Lane 0 rs2
-//              - Read Port 2: Lane 1 rs1
-//              - Read Port 3: Lane 1 rs2
-//              - Write Port 0: Lane 0 writeback
-//              - Write Port 1: Lane 1 writeback
-//              Register x0 is hardwired to zero.
-//              Read is combinational, write is synchronous (posedge clk).
+// 模块 : regfile
+// 项目: RISC-V 双发射超标量处理器
+// 描述: 32x32位寄存器堆，具有4个读端口和2个写端口。
+//              - 读端口0：通道0 rs1
+//              - 读端口1：通道0 rs2
+//              - 读端口2：通道1 rs1
+//              - 读端口3：通道1 rs2
+//              - 写端口0：通道0写回
+//              - 写端口1：通道1写回
+//              寄存器x0硬连线为零。
+//              读取为组合逻辑，写入为同步时序（posedge clk）。
 // ============================================================================
 
 module regfile (
-    input  logic        clk,        // Clock
-    input  logic        rst_n,      // Synchronous reset, active low
+    input  logic        clk,        // 时钟
+    input  logic        rst_n,      // 同步复位，低有效
 
-    // ----- Read Port 0 (Lane 0 rs1) -----
-    input  logic [4:0]  raddr0,     // Read address
-    output logic [31:0] rdata0,     // Read data
+    // ----- 读端口0（通道0 rs1） -----
+    input  logic [4:0]  raddr0,     // 读地址
+    output logic [31:0] rdata0,     // 读数据
 
-    // ----- Read Port 1 (Lane 0 rs2) -----
-    input  logic [4:0]  raddr1,     // Read address
-    output logic [31:0] rdata1,     // Read data
+    // ----- 读端口1（通道0 rs2） -----
+    input  logic [4:0]  raddr1,     // 读地址
+    output logic [31:0] rdata1,     // 读数据
 
-    // ----- Read Port 2 (Lane 1 rs1) -----
-    input  logic [4:0]  raddr2,     // Read address
-    output logic [31:0] rdata2,     // Read data
+    // ----- 读端口2（通道1 rs1） -----
+    input  logic [4:0]  raddr2,     // 读地址
+    output logic [31:0] rdata2,     // 读数据
 
-    // ----- Read Port 3 (Lane 1 rs2) -----
-    input  logic [4:0]  raddr3,     // Read address
-    output logic [31:0] rdata3,     // Read data
+    // ----- 读端口3（通道1 rs2） -----
+    input  logic [4:0]  raddr3,     // 读地址
+    output logic [31:0] rdata3,     // 读数据
 
-    // ----- Write Port 0 (Lane 0 writeback) -----
-    input  logic [4:0]  waddr0,     // Write address
-    input  logic [31:0] wdata0,     // Write data
-    input  logic        we0,        // Write enable
+    // ----- 写端口0（通道0写回） -----
+    input  logic [4:0]  waddr0,     // 写地址
+    input  logic [31:0] wdata0,     // 写数据
+    input  logic        we0,        // 写使能
 
-    // ----- Write Port 1 (Lane 1 writeback) -----
-    input  logic [4:0]  waddr1,     // Write address
-    input  logic [31:0] wdata1,     // Write data
-    input  logic        we1         // Write enable
+    // ----- 写端口1（通道1写回） -----
+    input  logic [4:0]  waddr1,     // 写地址
+    input  logic [31:0] wdata1,     // 写数据
+    input  logic        we1         // 写使能
 );
 
     // ------------------------------------------------------------------------
-    // Register array: 32 x 32-bit general purpose registers
-    // x0 is hardwired to zero (never written)
+    // 寄存器阵列：32个32位通用寄存器
+    // x0硬连线为零（永不写入）
     // ------------------------------------------------------------------------
     logic [31:0] regs [0:31];
 
     // ------------------------------------------------------------------------
-    // Read Logic (Combinational)
-    // x0 always returns 0
+    // 读逻辑（组合逻辑）
+    // x0始终返回0
     // ------------------------------------------------------------------------
     assign rdata0 = (raddr0 == 5'b0) ? 32'b0 : regs[raddr0];
     assign rdata1 = (raddr1 == 5'b0) ? 32'b0 : regs[raddr1];
@@ -59,12 +59,12 @@ module regfile (
     assign rdata3 = (raddr3 == 5'b0) ? 32'b0 : regs[raddr3];
 
     // ------------------------------------------------------------------------
-    // Write Logic (Synchronous with reset)
-    // - Reset: all registers cleared to 0
-    // - Only write to non-x0 registers when write enable is active
-    // - Lane 0 has priority: if both lanes write to same address,
-    //   Lane 1 should have been stalled in decode stage.
-    //   Safety: Lane 1 write is suppressed if same address as Lane 0.
+    // 写逻辑（带复位的同步时序）
+    // - 复位：所有寄存器清零
+    // - 仅当写使能有效时向非x0寄存器写入
+    // - 通道0具有更高优先级：若两通道写入同一地址，
+    //   通道1应在译码阶段被停顿。
+    //   安全措施：若与通道0地址相同，则抑制通道1写入。
     // ------------------------------------------------------------------------
     integer i;
     always_ff @(posedge clk) begin
@@ -73,12 +73,12 @@ module regfile (
                 regs[i] <= 32'b0;
             end
         end else begin
-            // Write Port 0 (Lane 0) - higher priority
+            // 写端口0（通道0）- 较高优先级
             if (we0 && (waddr0 != 5'b0)) begin
                 regs[waddr0] <= wdata0;
             end
 
-            // Write Port 1 (Lane 1) - lower priority
+            // 写端口1（通道1）- 较低优先级
             if (we1 && (waddr1 != 5'b0) && !(we0 && (waddr1 == waddr0))) begin
                 regs[waddr1] <= wdata1;
             end

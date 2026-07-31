@@ -1,54 +1,54 @@
 // ============================================================================
-// Module : decode_unit
-// Project: RISC-V 2-Issue Superscalar Processor
-// Description: Dual-lane instruction decode unit for 2-wide superscalar.
-//              - Lane 0 and Lane 1 decode independently
-//              - Extracts instruction fields, generates immediates & control signals
-//              - Enforces constraint: branch/jump must be in Lane 0 only
-//                (if Lane 0 is branch/jump, Lane 1 is forced to bubble)
-//              - Uses 4 register file read ports (rs1/rs2 for each lane)
+// 模块 : decode_unit
+// 项目: RISC-V 2发射超标量处理器
+// 描述: 双通道指令译码单元，用于2-wide超标量。
+//       - 通道0和通道1独立译码
+//       - 提取指令字段，生成立即数及控制信号
+//       - 强制约束：分支/跳转必须仅在通道0中
+//         （若通道0为分支/跳转，通道1强制插入气泡）
+//       - 使用4个寄存器文件读端口（每个通道的rs1/rs2）
 // ============================================================================
 
 `include "defines.sv"
 `include "types.sv"
 
 module decode_unit (
-    input  logic        clk,            // Clock
-    input  logic        rst_n,          // Synchronous reset, active low
+    input  logic        clk,            // 时钟
+    input  logic        rst_n,          // 同步复位，低有效
 
-    // ----- Inputs from IF/ID Pipeline Register -----
-    input  logic [31:0] id_pc0,         // Lane 0 PC
-    input  logic [31:0] id_inst0,       // Lane 0 instruction word
-    input  logic        id_valid0,      // Lane 0 valid
-    input  logic [31:0] id_pc1,         // Lane 1 PC
-    input  logic [31:0] id_inst1,       // Lane 1 instruction word
-    input  logic        id_valid1,      // Lane 1 valid
+    // ----- 来自IF/ID流水线寄存器的输入 -----
+    input  logic [31:0] id_pc0,         // 通道0 PC
+    input  logic [31:0] id_inst0,       // 通道0指令字
+    input  logic        id_valid0,      // 通道0有效
+    input  logic [31:0] id_pc1,         // 通道1 PC
+    input  logic [31:0] id_inst1,       // 通道1指令字
+    input  logic        id_valid1,      // 通道1有效
 
-    // ----- Branch Prediction Info from IF/ID -----
-    input  logic        id_bp_taken0,   // Lane 0 branch predicted taken
-    input  logic [31:0] id_bp_target0,  // Lane 0 predicted target
+    // ----- 来自IF/ID的分支预测信息 -----
+    input  logic        id_bp_taken0,   // 通道0分支预测为跳转
+    input  logic [31:0] id_bp_target0,  // 通道0预测目标地址
 
-    // ----- Register File Read Data (4 ports) -----
-    input  logic [31:0] rf_rs1_data0,   // Lane 0 rs1 data (read port 0)
-    input  logic [31:0] rf_rs2_data0,   // Lane 0 rs2 data (read port 1)
-    input  logic [31:0] rf_rs1_data1,   // Lane 1 rs1 data (read port 2)
-    input  logic [31:0] rf_rs2_data1,   // Lane 1 rs2 data (read port 3)
+    // ----- 寄存器文件读取数据（4端口） -----
+    input  logic [31:0] rf_rs1_data0,   // 通道0 rs1数据（读端口0）
+    input  logic [31:0] rf_rs2_data0,   // 通道0 rs2数据（读端口1）
+    input  logic [31:0] rf_rs1_data1,   // 通道1 rs1数据（读端口2）
+    input  logic [31:0] rf_rs2_data1,   // 通道1 rs2数据（读端口3）
 
-    // ----- Register File Read Address Outputs (Combinational) -----
-    output logic [4:0]  rf_rs1_addr0,   // Lane 0 rs1 address -> read port 0
-    output logic [4:0]  rf_rs2_addr0,   // Lane 0 rs2 address -> read port 1
-    output logic [4:0]  rf_rs1_addr1,   // Lane 1 rs1 address -> read port 2
-    output logic [4:0]  rf_rs2_addr1,   // Lane 1 rs2 address -> read port 3
+    // ----- 寄存器文件读地址输出（组合逻辑） -----
+    output logic [4:0]  rf_rs1_addr0,   // 通道0 rs1地址 -> 读端口0
+    output logic [4:0]  rf_rs2_addr0,   // 通道0 rs2地址 -> 读端口1
+    output logic [4:0]  rf_rs1_addr1,   // 通道1 rs1地址 -> 读端口2
+    output logic [4:0]  rf_rs2_addr1,   // 通道1 rs2地址 -> 读端口3
 
-    // ----- Output to ID/EX Pipeline Register -----
-    output id_ex_reg_t  id_ex_out        // Decoded instruction info for both lanes
+    // ----- 输出到ID/EX流水线寄存器 -----
+    output id_ex_reg_t  id_ex_out        // 双通道译码后的指令信息
 );
 
     // ========================================================================
-    // Instruction Field Extraction (Combinational)
+    // 指令字段提取（组合逻辑）
     // ========================================================================
 
-    // --- Lane 0 fields ---
+    // --- 通道0字段 ---
     wire [6:0]  opcode0  = id_inst0[6:0];
     wire [4:0]  rd0      = id_inst0[11:7];
     wire [2:0]  funct3_0 = id_inst0[14:12];
@@ -56,7 +56,7 @@ module decode_unit (
     wire [4:0]  rs2_0    = id_inst0[24:20];
     wire [6:0]  funct7_0 = id_inst0[31:25];
 
-    // --- Lane 1 fields ---
+    // --- 通道1字段 ---
     wire [6:0]  opcode1  = id_inst1[6:0];
     wire [4:0]  rd1      = id_inst1[11:7];
     wire [2:0]  funct3_1 = id_inst1[14:12];
@@ -65,7 +65,7 @@ module decode_unit (
     wire [6:0]  funct7_1 = id_inst1[31:25];
 
     // ========================================================================
-    // Register File Read Addresses
+    // 寄存器文件读地址
     // ========================================================================
     assign rf_rs1_addr0 = rs1_0;
     assign rf_rs2_addr0 = rs2_0;
@@ -73,23 +73,23 @@ module decode_unit (
     assign rf_rs2_addr1 = rs2_1;
 
     // ========================================================================
-    // Immediate Generation (Combinational)
+    // 立即数生成（组合逻辑）
     // ========================================================================
 
-    // --- Lane 0 immediate ---
+    // --- 通道0立即数 ---
     logic [31:0] imm0;
     always_comb begin
         case (opcode0)
-            `OPCODE_LUI, `OPCODE_AUIPC: // U-type
+            `OPCODE_LUI, `OPCODE_AUIPC: // U类型
                 imm0 = {id_inst0[31:12], 12'b0};
-            `OPCODE_JAL:                 // J-type
+            `OPCODE_JAL:                 // J类型
                 imm0 = {{11{id_inst0[31]}}, id_inst0[31], id_inst0[19:12],
                          id_inst0[20], id_inst0[30:21], 1'b0};
-            `OPCODE_JALR, `OPCODE_LOAD, `OPCODE_ALU_IMM: // I-type
+            `OPCODE_JALR, `OPCODE_LOAD, `OPCODE_ALU_IMM: // I类型
                 imm0 = {{20{id_inst0[31]}}, id_inst0[31:20]};
-            `OPCODE_STORE:               // S-type
+            `OPCODE_STORE:               // S类型
                 imm0 = {{20{id_inst0[31]}}, id_inst0[31:25], id_inst0[11:7]};
-            `OPCODE_BRANCH:              // B-type
+            `OPCODE_BRANCH:              // B类型
                 imm0 = {{19{id_inst0[31]}}, id_inst0[31], id_inst0[7],
                          id_inst0[30:25], id_inst0[11:8], 1'b0};
             default:
@@ -97,7 +97,7 @@ module decode_unit (
         endcase
     end
 
-    // --- Lane 1 immediate ---
+    // --- 通道1立即数 ---
     logic [31:0] imm1;
     always_comb begin
         case (opcode1)
@@ -119,7 +119,7 @@ module decode_unit (
     end
 
     // ========================================================================
-    // Control Signal Generation - Lane 0
+    // 控制信号生成 - 通道0
     // ========================================================================
     logic [2:0]  alu_op0;
     logic        alu_src0, reg_write0, mem_read0, mem_write0;
@@ -205,12 +205,12 @@ module decode_unit (
                 alu_src0   = 1'b1;
                 auipc0     = 1'b1;
             end
-            default: ; // NOP / FENCE / unknown
+            default: ; // NOP / FENCE / 未知指令
         endcase
     end
 
     // ========================================================================
-    // Control Signal Generation - Lane 1
+    // 控制信号生成 - 通道1
     // ========================================================================
     logic [2:0]  alu_op1;
     logic        alu_src1, reg_write1, mem_read1, mem_write1;
@@ -301,10 +301,10 @@ module decode_unit (
     end
 
     // ========================================================================
-    // Superscalar Constraint: Only conditional branches force Lane 1 bubble
-    // - Branch (conditional): Lane 1 must bubble (control flow uncertainty)
-    // - JAL/JALR: Lane 1 CAN execute (unconditional, no control hazard)
-    // - Load/Store: Both lanes CAN access memory (dual-port data memory)
+    // 超标量约束：仅条件分支强制通道1插入气泡
+    // - 分支（条件）：通道1必须进入气泡（控制流不确定性）
+    // - JAL/JALR：通道1可以执行（无条件，无控制冒险）
+    // - Load/Store：两个通道均可访问内存（双端口数据存储器）
     // ========================================================================
     logic lane0_is_branch;
     assign lane0_is_branch = branch0;
@@ -313,14 +313,14 @@ module decode_unit (
     assign eff_valid1 = id_valid1 & ~lane0_is_branch;
 
     // ========================================================================
-    // Output Assembly: Pack decoded info into id_ex_reg_t
+    // 输出组装：将译码信息打包进 id_ex_reg_t
     // ========================================================================
     always_comb begin
-        // ===== Lane 0 =====
+        // ===== 通道0 =====
         id_ex_out.pc0         = id_pc0;
         id_ex_out.rd_addr0    = rd0;
-        id_ex_out.rs1_data0   = rf_rs1_data0;   // rs1 from read port 0
-        id_ex_out.rs2_data0   = rf_rs2_data0;   // rs2 from read port 1
+        id_ex_out.rs1_data0   = rf_rs1_data0;   // rs1来自读端口0
+        id_ex_out.rs2_data0   = rf_rs2_data0;   // rs2来自读端口1
         id_ex_out.imm0        = imm0;
         id_ex_out.alu_op0     = alu_op0;
         id_ex_out.alu_src0    = alu_src0;
@@ -338,11 +338,11 @@ module decode_unit (
         id_ex_out.rs2_addr0   = rs2_0;
         id_ex_out.valid0      = id_valid0;
 
-        // ===== Lane 1 =====
+        // ===== 通道1 =====
         id_ex_out.pc1         = id_pc1;
         id_ex_out.rd_addr1    = rd1;
-        id_ex_out.rs1_data1   = rf_rs1_data1;   // rs1 from read port 2
-        id_ex_out.rs2_data1   = rf_rs2_data1;   // rs2 from read port 3
+        id_ex_out.rs1_data1   = rf_rs1_data1;   // rs1来自读端口2
+        id_ex_out.rs2_data1   = rf_rs2_data1;   // rs2来自读端口3
         id_ex_out.imm1        = imm1;
         id_ex_out.alu_op1     = alu_op1;
         id_ex_out.alu_src1    = alu_src1;
@@ -360,7 +360,7 @@ module decode_unit (
         id_ex_out.rs2_addr1   = rs2_1;
         id_ex_out.valid1      = eff_valid1;
 
-        // ===== Branch Prediction Info =====
+        // ===== 分支预测信息 =====
         id_ex_out.bp_taken0   = id_bp_taken0;
         id_ex_out.bp_target0  = id_bp_target0;
     end

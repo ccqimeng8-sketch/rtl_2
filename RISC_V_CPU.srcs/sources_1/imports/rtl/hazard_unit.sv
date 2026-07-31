@@ -1,74 +1,72 @@
 // ============================================================================
-// Module : hazard_unit
-// Project: RISC-V 2-Issue Superscalar Processor (Optimized)
-// Description: Hazard detection and pipeline control unit.
-//              Detects the following hazards:
-//              1. Structural hazard: register write conflict between lanes
-//              2. Structural hazard: same-address memory access in both lanes
-//              3. Control hazard: branch misprediction causes pipeline flush
+// 模块 : hazard_unit
+// 项目: RISC-V 2发射超标量处理器（优化版）
+// 描述: 冒险检测与流水线控制单元。
+//       检测以下冒险：
+//       1. 结构冒险：通道间寄存器写冲突
+//       2. 结构冒险：两个通道同时访问相同地址的内存
+//       3. 控制冒险：分支预测错误导致流水线刷新
 //
-//              NOTE: Load-Use hazard does NOT require a stall in this design.
-//              When a Load is in MEM/WB stage, the dependent instruction is in
-//              EX stage. The MEM/WB → EX forwarding network provides the correct
-//              Load data combinationally, and the result is captured into EX/MEM
-//              at the next clock edge. No stall needed.
+//       注：本设计中加载-使用冒险不需要停顿。
+//       当Load指令处于MEM/WB阶段时，依赖指令处于EX阶段。
+//       MEM/WB → EX的前推网络组合逻辑提供正确的Load数据，
+//       结果在下一个时钟边沿被捕获到EX/MEM中。无需停顿。
 //
-//              NOTE: With dual-port data memory, both lanes can access memory
-//              simultaneously. Same-address conflicts are detected here.
+//       注：使用双端口数据存储器，两个通道可同时访问内存。
+//       相同地址的冲突在此检测。
 //
-//              Generates stall, flush, and fetch_stall signals.
+//       生成停顿(stall)、刷新(flush)和取指停顿(fetch_stall)信号。
 // ============================================================================
 
 `include "defines.sv"
 `include "types.sv"
 
 module hazard_unit (
-    // ----- ID Stage Instruction Info -----
-    input  logic [4:0]  id_rd_addr0,        // Lane 0 destination register
-    input  logic        id_reg_write0,      // Lane 0 will write register
-    input  logic        id_valid0,          // Lane 0 valid
-    input  logic [4:0]  id_rd_addr1,        // Lane 1 destination register
-    input  logic        id_reg_write1,      // Lane 1 will write register
-    input  logic        id_valid1,          // Lane 1 valid
-    input  logic        id_mem_read0,       // Lane 0 is a Load instruction
-    input  logic        id_mem_read1,       // Lane 1 is a Load instruction
-    input  logic        id_mem_write0,      // Lane 0 is a Store instruction
-    input  logic        id_mem_write1,      // Lane 1 is a Store instruction
-    input  logic [4:0]  id_rs1_addr0,       // Lane 0 source register 1
-    input  logic [4:0]  id_rs2_addr0,       // Lane 0 source register 2
-    input  logic [4:0]  id_rs1_addr1,       // Lane 1 source register 1
-    input  logic [4:0]  id_rs2_addr1,       // Lane 1 source register 2
+    // ----- ID阶段指令信息 -----
+    input  logic [4:0]  id_rd_addr0,        // 通道0目标寄存器
+    input  logic        id_reg_write0,      // 通道0将要写寄存器
+    input  logic        id_valid0,          // 通道0有效
+    input  logic [4:0]  id_rd_addr1,        // 通道1目标寄存器
+    input  logic        id_reg_write1,      // 通道1将要写寄存器
+    input  logic        id_valid1,          // 通道1有效
+    input  logic        id_mem_read0,       // 通道0是Load指令
+    input  logic        id_mem_read1,       // 通道1是Load指令
+    input  logic        id_mem_write0,      // 通道0是Store指令
+    input  logic        id_mem_write1,      // 通道1是Store指令
+    input  logic [4:0]  id_rs1_addr0,       // 通道0源寄存器1
+    input  logic [4:0]  id_rs2_addr0,       // 通道0源寄存器2
+    input  logic [4:0]  id_rs1_addr1,       // 通道1源寄存器1
+    input  logic [4:0]  id_rs2_addr1,       // 通道1源寄存器2
 
-    // ----- EX/MEM Stage Info -----
-    input  logic [4:0]  exmem_rd_addr0,     // EX/MEM Lane 0 destination
-    input  logic        exmem_reg_write0,   // EX/MEM Lane 0 writes register
-    input  logic        exmem_mem_read0,    // EX/MEM Lane 0 is Load
-    input  logic [4:0]  exmem_rd_addr1,     // EX/MEM Lane 1 destination
-    input  logic        exmem_reg_write1,   // EX/MEM Lane 1 writes register
+    // ----- EX/MEM阶段信息 -----
+    input  logic [4:0]  exmem_rd_addr0,     // EX/MEM 通道0目标寄存器
+    input  logic        exmem_reg_write0,   // EX/MEM 通道0写寄存器
+    input  logic        exmem_mem_read0,    // EX/MEM 通道0是Load
+    input  logic [4:0]  exmem_rd_addr1,     // EX/MEM 通道1目标寄存器
+    input  logic        exmem_reg_write1,   // EX/MEM 通道1写寄存器
 
-    // ----- MEM/WB Stage Info -----
-    input  logic [4:0]  memwb_rd_addr0,     // MEM/WB Lane 0 destination
-    input  logic        memwb_reg_write0,   // MEM/WB Lane 0 writes register
-    input  logic [4:0]  memwb_rd_addr1,     // MEM/WB Lane 1 destination
-    input  logic        memwb_reg_write1,   // MEM/WB Lane 1 writes register
+    // ----- MEM/WB阶段信息 -----
+    input  logic [4:0]  memwb_rd_addr0,     // MEM/WB 通道0目标寄存器
+    input  logic        memwb_reg_write0,   // MEM/WB 通道0写寄存器
+    input  logic [4:0]  memwb_rd_addr1,     // MEM/WB 通道1目标寄存器
+    input  logic        memwb_reg_write1,   // MEM/WB 通道1写寄存器
 
-    // ----- Branch Resolution Signals -----
-    input  logic        branch_resolve,     // Branch instruction resolved in EX
-    input  logic        branch_mispredict,  // Branch was mispredicted
+    // ----- 分支解析信号 -----
+    input  logic        branch_resolve,     // 分支指令在EX阶段解析
+    input  logic        branch_mispredict,  // 分支预测错误
 
-    // ----- Output Control Signals -----
-    output logic        stall,              // Pipeline stall (all stages hold)
-    output logic        flush_if_id,        // Flush IF/ID pipeline register
-    output logic        flush_id_ex,        // Flush ID/EX pipeline register
-    output logic        stall_fetch          // Stall instruction fetch
+    // ----- 输出控制信号 -----
+    output logic        stall,              // 流水线停顿（所有阶段保持）
+    output logic        flush_if_id,        // 刷新IF/ID流水线寄存器
+    output logic        flush_id_ex,        // 刷新ID/EX流水线寄存器
+    output logic        stall_fetch          // 停顿取指
 );
 
     // ========================================================================
-    // 1. Structural Hazard Detection
+    // 1. 结构冒险检测
     // ========================================================================
-    // Register write conflict: both lanes writing to the same register cannot
-    // proceed simultaneously. The decode unit also handles this via the
-    // eff_valid1 mechanism, but we keep this as a safety check.
+    // 寄存器写冲突：两个通道同时写入相同寄存器时无法继续执行。
+    // 译码单元也通过eff_valid1机制处理此情况，但此处作为安全检查保留。
 
     logic wr_struct_hazard;
     assign wr_struct_hazard = id_valid0 & id_valid1 &
@@ -77,23 +75,23 @@ module hazard_unit (
         (id_rd_addr0 == id_rd_addr1);
 
     // ========================================================================
-    // 2. Memory Address Conflict Detection (Dual-Port)
+    // 2. 内存地址冲突检测（双端口）
     // ========================================================================
-    // When both lanes access data memory simultaneously, check for conflicts:
-    //   - Same address + at least one write → structural hazard
-    // Lane 0 has priority; Lane 1 is stalled.
+    // 当两个通道同时访问数据存储器时，检查冲突：
+    //   - 相同地址 + 至少一个写操作 → 结构冒险
+    // 通道0具有优先级；通道1被停顿。
 
     logic mem_conflict;
 
-    // Compute Lane 0 and Lane 1 memory addresses from ID stage info
-    // At ID stage, the address is rs1 + imm (pre-ALU). We approximate
-    // by checking if both lanes have memory ops active.
-    // Full address comparison happens at EX/MEM stage.
-    // For now: detect if both lanes issue memory ops to potentially same region.
-    // This is conservative: stall if both lanes have ANY memory op.
+    // 基于ID阶段信息计算通道0和通道1的内存地址
+    // 在ID阶段，地址为rs1 + imm（ALU前）。我们通过检查
+    // 两个通道是否都有活跃的内存操作来近似判断。
+    // 完整的地址比较在EX/MEM阶段进行。
+    // 目前：检测两个通道是否都发出潜在同区域的内存操作。
+    // 这是保守的做法：任一通道有任何内存操作就停顿。
 
-    // Conservative: if both lanes have memory ops (Load or Store), stall Lane 1.
-    // This can be refined later with actual address comparison.
+    // 保守策略：若两个通道都有内存操作（Load或Store），停顿通道1。
+    // 后续可通过实际地址比较进一步优化。
     logic dual_mem_op;
     assign dual_mem_op = (id_mem_read0 | id_mem_write0) &
                          (id_mem_read1 | id_mem_write1) &
@@ -102,28 +100,28 @@ module hazard_unit (
     assign mem_conflict = dual_mem_op;
 
     // ========================================================================
-    // 3. Control Hazard (Branch Misprediction)
+    // 3. 控制冒险（分支预测错误）
     // ========================================================================
-    // When a branch is resolved in EX stage and prediction was wrong,
-    // flush the IF/ID and ID/EX pipeline registers.
+    // 当分支在EX阶段解析且预测错误时，
+    // 刷新IF/ID和ID/EX流水线寄存器。
 
     logic control_flush;
     assign control_flush = branch_resolve & branch_mispredict;
 
     // ========================================================================
-    // Combined Output Signals
+    // 综合输出信号
     // ========================================================================
 
-    // Stall: asserted when structural hazard or memory conflict detected
+    // 停顿：检测到结构冒险或内存冲突时置位
     assign stall = wr_struct_hazard | mem_conflict;
 
-    // Stall fetch: same as pipeline stall
+    // 停顿取指：与流水线停顿相同
     assign stall_fetch = stall;
 
-    // Flush IF/ID: on branch misprediction (discard wrongly fetched instructions)
+    // 刷新IF/ID：分支预测错误时（丢弃取指错误的指令）
     assign flush_if_id = control_flush;
 
-    // Flush ID/EX: on stall (insert bubble) or branch misprediction
+    // 刷新ID/EX：停顿（插入气泡）或分支预测错误时
     assign flush_id_ex = stall | control_flush;
 
 endmodule
