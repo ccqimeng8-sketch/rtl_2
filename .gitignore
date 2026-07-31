@@ -1,0 +1,26 @@
+# Vivado project files (generated)
+RISC_V_CPU.cache/
+RISC_V_CPU.hw/
+RISC_V_CPU.ip_user_files/
+RISC_V_CPU.runs/
+RISC_V_CPU.sim/
+
+# Vivado journal and log
+vivado.jou
+vivado.log
+
+# Vivado project user settings
+*.xpr~
+*.xpr.v
+
+# Compiled object files
+*.o
+*.obj
+*.dcp
+*.wdb
+*.vcd
+*.pb
+
+# OS generated files
+.DS_Store
+Thumbs.db
